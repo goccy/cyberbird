@@ -4,6 +4,7 @@ include_directories(../src/include)
 
 # set runtime directory
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g3")
 
 add_subdirectory(lib/googletest)
 
@@ -17,7 +18,7 @@ include_directories(${GTEST_ROOT}/include/)
 link_directories(${GTEST_ROOT}/build/)
 
 # Generate executable file
-add_executable(Test ${CMAKE_CURRENT_SOURCE_DIR}/test_indexer.cc)
+add_executable(Test test_indexer.cc test_tree.cc)
 
 # Link libraries
 target_link_libraries(Test cyberbird gtest gtest_main pthread)
