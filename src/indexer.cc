@@ -4,19 +4,24 @@
 
 using namespace cyberbird;
 
-static const uint64_t MAX_DETAIL = 32;
+static const uint64_t MAX_ZOOM_LEVEL = 32;
 
 uint64_t Indexer::index(double latitude, double longitude)
+{
+    return index(latitude, longitude, MAX_ZOOM_LEVEL);
+}
+
+uint64_t Indexer::index(double latitude, double longitude, unsigned int zoomLevel)
 {
     double slatitude = sin(latitude * (M_PI / 180));
     double x = (longitude + 180) / 360;
     double y = 0.5 - log((1 + slatitude) / (1 - slatitude)) / (M_PI * 4);
-    uint64_t mapSize = (uint64_t)256 << MAX_DETAIL;
+    uint64_t mapSize = (uint64_t)256 << zoomLevel;
     uint64_t xx = ((uint64_t)(x * (double)mapSize + 0.5)) >> 8;
     uint64_t yy = ((uint64_t)(y * (double)mapSize + 0.5)) >> 8;
-    uint64_t count = MAX_DETAIL << 1;
+    uint64_t count = zoomLevel << 1;
     uint64_t ret   = 0;
-    for (int i = MAX_DETAIL; i > 0; i--) {
+    for (int i = zoomLevel; i > 0; i--) {
         uint64_t n = i - 1;
         int mask   = 1 << n;
         count -= 2;
@@ -29,8 +34,8 @@ void Indexer::toLocation(uint64_t index, double *latitude, double *longitude)
 {
     uint64_t xx = 0;
     uint64_t yy = 0;
-    uint64_t count = MAX_DETAIL << 1;
-    for (uint64_t i = MAX_DETAIL; i > 0; i--) {
+    uint64_t count = MAX_ZOOM_LEVEL << 1;
+    for (uint64_t i = MAX_ZOOM_LEVEL; i > 0; i--) {
         count -= 2;
         uint64_t mask   = (uint64_t)1 << (i - 1);
         int number = int((index & (uint64_t)((uint64_t)3 << count)) >> count);
@@ -47,7 +52,7 @@ void Indexer::toLocation(uint64_t index, double *latitude, double *longitude)
             break;
         }
     }
-    uint64_t mapSize = (uint64_t)256 << MAX_DETAIL;
+    uint64_t mapSize = (uint64_t)256 << MAX_ZOOM_LEVEL;
     double x = ((double)(xx << 8) / mapSize) - 0.5;
     double y = 0.5 - ((double)(yy << 8) / mapSize);
     *latitude  = 90 - 360 * atan(exp(-y * 2 * M_PI)) / M_PI;
