@@ -42,6 +42,7 @@ public:
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel);
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel, unsigned int maxZoomLevel);
     void insert(uint64_t key, uint64_t offest, uint64_t size);
+    void insert(uint64_t key, uint64_t offest, uint64_t size, unsigned int cacheZoomLevel);
     void update(uint64_t key, uint64_t offest, uint64_t size);
     void remove(uint64_t key);
     IndexNode *rootNode(void);
