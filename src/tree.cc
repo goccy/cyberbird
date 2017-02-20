@@ -57,15 +57,88 @@ IndexTree::~IndexTree(void)
     CYBER_BIRD_SAFE_DELETE(this->_rootNode);
 }
 
-std::vector<IndexLeaf *> IndexTree::select(uint64_t key)
+std::vector<IndexLeaf *> IndexTree::select(uint64_t key, unsigned int zoomLevel)
+{
+    return select(key, zoomLevel, CYBER_BIRD_MAX_ZOOM_LEVEL);
+}
+
+std::vector<IndexLeaf *> IndexTree::select(uint64_t key, unsigned int zoomLevel, unsigned int maxZoomLevel)
 {
     std::vector<IndexLeaf *> ret;
+    if (zoomLevel > maxZoomLevel) return ret;
+
+    uint64_t count = CYBER_BIRD_MAX_ZOOM_LEVEL << 1;
+    IndexNode *currentNode = this->_rootNode;
+    for (size_t i = CYBER_BIRD_MAX_ZOOM_LEVEL; i > 0; i--) {
+        size_t currentZoomLevel = CYBER_BIRD_MAX_ZOOM_LEVEL - i + 1;
+        count -= 2;
+        IndexType type = (IndexType)((key & (uint64_t)((uint64_t)3 << count)) >> count);
+        if (currentZoomLevel < zoomLevel) {
+            switch (type) {
+            case IndexTypeTopLeft:
+                if (!currentNode->_topLeftNode) return ret;
+                currentNode = currentNode->_topLeftNode;
+                break;
+            case IndexTypeTopRight:
+                if (!currentNode->_topRightNode) return ret;
+                currentNode = currentNode->_topRightNode;
+                break;
+            case IndexTypeBottomLeft:
+                if (!currentNode->_bottomLeftNode) return ret;
+                currentNode = currentNode->_bottomLeftNode;
+                break;
+            case IndexTypeBottomRight:
+                if (!currentNode->_bottomRightNode) return ret;
+                currentNode = currentNode->_bottomRightNode;
+                break;
+            default:
+                break;
+            }
+        } else {
+            ret = getAllLocation(currentNode, maxZoomLevel);
+            break;
+        }
+    }
     return ret;
 }
 
-std::vector<IndexLeaf *> IndexTree::select(uint64_t key, unsigned int zoomLevel)
+std::vector<IndexLeaf *> IndexTree::getAllLocation(IndexNode *node, unsigned int maxZoomLevel)
 {
     std::vector<IndexLeaf *> ret;
+    if (node->_zoomLevel > maxZoomLevel) return ret;
+
+    size_t locationCount = node->_locations.size();
+    for (size_t i = 0; i< locationCount; ++i) {
+        ret.push_back(node->_locations[i]);
+    }
+    if (node->_topLeftNode) {
+        std::vector<IndexLeaf *> locations = getAllLocation(node->_topLeftNode, maxZoomLevel);
+        size_t locationCount = locations.size();
+        for (size_t i = 0; i< locationCount; ++i) {
+            ret.push_back(locations[i]);
+        }
+    }
+    if (node->_topRightNode) {
+        std::vector<IndexLeaf *> locations = getAllLocation(node->_topRightNode, maxZoomLevel);
+        size_t locationCount = locations.size();
+        for (size_t i = 0; i< locationCount; ++i) {
+            ret.push_back(locations[i]);
+        }
+    }
+    if (node->_bottomLeftNode) {
+        std::vector<IndexLeaf *> locations = getAllLocation(node->_bottomLeftNode, maxZoomLevel);
+        size_t locationCount = locations.size();
+        for (size_t i = 0; i< locationCount; ++i) {
+            ret.push_back(locations[i]);
+        }
+    }
+    if (node->_bottomRightNode) {
+        std::vector<IndexLeaf *> locations = getAllLocation(node->_bottomRightNode, maxZoomLevel);
+        size_t locationCount = locations.size();
+        for (size_t i = 0; i< locationCount; ++i) {
+            ret.push_back(locations[i]);
+        }
+    }
     return ret;
 }
 
@@ -74,7 +147,7 @@ void IndexTree::insert(uint64_t key, uint64_t offset, uint64_t size)
     uint64_t count = CYBER_BIRD_MAX_ZOOM_LEVEL << 1;
     IndexNode *currentNode = this->_rootNode;
     currentNode->_totalChildren++;
-    for (uint64_t i = CYBER_BIRD_MAX_ZOOM_LEVEL; i > 0; i--) {
+    for (size_t i = CYBER_BIRD_MAX_ZOOM_LEVEL; i > 0; i--) {
         count -= 2;
         IndexType type = (IndexType)((key & (uint64_t)((uint64_t)3 << count)) >> count);
         switch (type) {

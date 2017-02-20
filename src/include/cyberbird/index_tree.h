@@ -39,8 +39,8 @@ class IndexTree {
 public:
     IndexTree(void);
     ~IndexTree(void);
-    std::vector<IndexLeaf *> select(uint64_t key);
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel);
+    std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel, unsigned int maxZoomLevel);
     void insert(uint64_t key, uint64_t offest, uint64_t size);
     void update(uint64_t key, uint64_t offest, uint64_t size);
     void remove(uint64_t key);
@@ -48,6 +48,7 @@ public:
 
 private:
     IndexNode *_rootNode;
+    std::vector<IndexLeaf *> getAllLocation(IndexNode *node, unsigned int maxZoomLevel);
 };
 
 }
