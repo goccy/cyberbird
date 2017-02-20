@@ -14,32 +14,32 @@ TEST_F(IndexTreeTest, insert) {
     IndexTree tree;
     tree.insert(index, 0, 0);
     IndexNode *searchNode = tree.rootNode();
-    EXPECT_EQ(searchNode->_totalChildren, 1);
+    EXPECT_EQ(searchNode->totalChildren, 1);
     for (size_t i = 0; i < CYBER_BIRD_MAX_ZOOM_LEVEL; ++i) {
         unsigned int hasChildNodeCount = 0;
         IndexNode *nextDepthNode = NULL;
-        if (searchNode->_topLeftNode) {
-            nextDepthNode = searchNode->_topLeftNode;
+        if (searchNode->topLeft.node) {
+            nextDepthNode = searchNode->topLeft.node;
             hasChildNodeCount++;
         }
-        if (searchNode->_topRightNode) {
-            nextDepthNode = searchNode->_topRightNode;
+        if (searchNode->topRight.node) {
+            nextDepthNode = searchNode->topRight.node;
             hasChildNodeCount++;
         }
-        if (searchNode->_bottomLeftNode) {
-            nextDepthNode = searchNode->_bottomLeftNode;
+        if (searchNode->bottomLeft.node) {
+            nextDepthNode = searchNode->bottomLeft.node;
             hasChildNodeCount++;
         }
-        if (searchNode->_bottomRightNode) {
-            nextDepthNode = searchNode->_bottomRightNode;
+        if (searchNode->bottomRight.node) {
+            nextDepthNode = searchNode->bottomRight.node;
             hasChildNodeCount++;
         }
         EXPECT_EQ(hasChildNodeCount, 1);
         searchNode = nextDepthNode;
         if (i == CYBER_BIRD_MAX_ZOOM_LEVEL - 1) {
-            EXPECT_EQ(searchNode->_locations.size(), 1);
+            EXPECT_EQ(searchNode->locationCount, 1);
         } else {
-            EXPECT_EQ(searchNode->_locations.size(), 0);
+            EXPECT_EQ(searchNode->locationCount, 0);
         }
     }
 }
@@ -62,4 +62,5 @@ TEST_F(IndexTreeTest, select) {
 
     EXPECT_EQ(tree.select(index, 10).size(), 2);
     EXPECT_EQ(tree.select(index, 10, 13).size(), 0);
+    
 }
