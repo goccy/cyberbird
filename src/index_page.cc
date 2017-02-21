@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <zlib.h>
 
 using namespace cyberbird;
 
@@ -27,32 +28,34 @@ IndexTree *IndexPage::tree(void)
 
 void IndexPage::load(void)
 {
-    int fd = open(this->_filename, O_RDONLY);
-    if (fd < 0) {
+    gzFile file = gzopen(this->_filename, "rb");
+    if (!file) {
         CYBER_BIRD_LOG_ERROR("cannot open %s. %s", this->_filename, strerror(errno));
         return;
     }
     char headerBuf[sizeof(IndexPageHeader)] = {0};
     size_t headerSize = sizeof(IndexPageHeader);
-    if (read(fd, headerBuf, headerSize) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, strerror(errno));
+    int readError = 0;
+    if ((readError = gzread(file, headerBuf, headerSize)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, gzerror(file, &readError));
         return;
     }
     IndexPageHeader *header = (IndexPageHeader *)headerBuf;
     EncodeBuffer nodePoolBuffer;
     nodePoolBuffer.size = header->nodePoolSize;
     nodePoolBuffer.data = (char *)malloc(header->nodePoolSize);
-    if (read(fd, nodePoolBuffer.data, header->nodePoolSize) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, strerror(errno));
+    if ((readError = gzread(file, nodePoolBuffer.data, header->nodePoolSize)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, gzerror(file, &readError));
         return;
     }
     EncodeBuffer leafPoolBuffer;
     leafPoolBuffer.size = header->leafPoolSize;
     leafPoolBuffer.data = (char *)malloc(header->leafPoolSize);
-    if (read(fd, leafPoolBuffer.data, header->leafPoolSize) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, strerror(errno));
+    if ((readError = gzread(file, leafPoolBuffer.data, header->leafPoolSize)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, gzerror(file, &readError));
         return;
     }
+    gzclose(file);
     CYBER_BIRD_SAFE_DELETE(this->_tree);
     this->_tree = new IndexTree(&nodePoolBuffer, &leafPoolBuffer);
     CYBER_BIRD_SAFE_FREE(nodePoolBuffer.data);
@@ -69,22 +72,23 @@ void IndexPage::save(void)
     header.nodePoolSize     = nodePoolBuffer.size;
     header.leafPoolPosition = headerSize + nodePoolBuffer.size;
     header.leafPoolSize     = leafPoolBuffer.size;
-    int fd = open(this->_filename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR);
-    if (fd < 0) {
+    gzFile file = gzopen(this->_filename, "wb");
+    if (!file) {
         CYBER_BIRD_LOG_ERROR("cannot create|open %s. %s", this->_filename, strerror(errno));
         return;
     }
-    if (write(fd, (char *)&header, headerSize) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, strerror(errno));
+    int writeError = 0;
+    if ((writeError = gzwrite(file, (char *)&header, headerSize)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
         return;
     }
-    if (write(fd, nodePoolBuffer.data, nodePoolBuffer.size) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, strerror(errno));
+    if ((writeError = gzwrite(file, nodePoolBuffer.data, nodePoolBuffer.size)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
         return;
     }
-    if (write(fd, leafPoolBuffer.data, leafPoolBuffer.size) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot write to %s %s", this->_filename, strerror(errno));
+    if ((writeError = gzwrite(file, leafPoolBuffer.data, leafPoolBuffer.size)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot write to %s %s", this->_filename, gzerror(file, &writeError));
         return;
     }
-    close(fd);
+    gzclose(file);
 }
