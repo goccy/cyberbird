@@ -1,6 +1,7 @@
 #include <cyberbird/index_tree.h>
 #include <cyberbird/util.h>
 #include <stdlib.h>
+#include <map>
 
 using namespace cyberbird;
 
@@ -18,6 +19,40 @@ IndexTree::IndexTree(void)
     this->_currentNodeCount = 0;
     this->_currentLeafCount = 0;
     this->_rootNode = newNode();
+}
+
+#define SET_PTR_FROM_INDEX(pool, node, position) (node->position.node = node->position.index > 0 ? pool + node->position.index : NULL)
+
+IndexTree::IndexTree(EncodeBuffer *nodePoolBuffer, EncodeBuffer *leafPoolBuffer)
+{
+    static const int EXTEND_BUFFER_SIZE = 1024;
+
+    this->_currentNodePoolCapacity = nodePoolBuffer->size + EXTEND_BUFFER_SIZE;
+    this->_currentLeafPoolCapacity = leafPoolBuffer->size + EXTEND_BUFFER_SIZE;
+    this->_nodePool = (IndexNodePool *)calloc(this->_currentNodePoolCapacity, sizeof(IndexNode));
+    this->_leafPool = (IndexLeafPool *)calloc(this->_currentLeafPoolCapacity, sizeof(IndexLeaf));
+    memcpy(this->_nodePool, nodePoolBuffer->data, nodePoolBuffer->size);
+    memcpy(this->_leafPool, leafPoolBuffer->data, leafPoolBuffer->size);
+    this->_currentNodeCount = nodePoolBuffer->size / sizeof(IndexNode);
+    this->_currentLeafCount = leafPoolBuffer->size / sizeof(IndexLeaf);
+    for (size_t i = 0; i < this->_currentNodeCount; ++i) {
+        IndexNode *node = this->_nodePool + i;
+        SET_PTR_FROM_INDEX(this->_nodePool, node, topLeft);
+        SET_PTR_FROM_INDEX(this->_nodePool, node, topRight);
+        SET_PTR_FROM_INDEX(this->_nodePool, node, bottomLeft);
+        SET_PTR_FROM_INDEX(this->_nodePool, node, bottomRight);
+    }
+    std::map<IndexNode *, size_t> nodeLocationMap;
+    for (size_t i = 0; i < this->_currentLeafCount; ++i) {
+        IndexLeaf *leaf = this->_leafPool + i;
+        IndexNode *node = this->_nodePool + leaf->node.index;
+        leaf->node.ptr  = node;
+        node->locations = (IndexLeaf **)calloc(node->locationCapacity, sizeof(IndexLeaf *));
+        size_t locationCount = nodeLocationMap[node];
+        node->locations[locationCount] = leaf;
+        nodeLocationMap[node] = locationCount + 1;
+    }
+    this->_rootNode = (IndexNode *)this->_nodePool;
 }
 
 IndexTree::~IndexTree(void)

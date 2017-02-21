@@ -58,6 +58,7 @@ typedef struct {
 class IndexTree {
 public:
     IndexTree(void);
+    IndexTree(EncodeBuffer *nodePoolBuffer, EncodeBuffer *leafPoolBuffer);
     ~IndexTree(void);
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel);
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel, unsigned int maxZoomLevel);
