@@ -57,6 +57,12 @@ IndexTree::IndexTree(EncodeBuffer *nodePoolBuffer, EncodeBuffer *leafPoolBuffer)
 
 IndexTree::~IndexTree(void)
 {
+    for (size_t i = 0; i < this->_currentNodeCount; ++i) {
+        IndexNode *node = this->_nodePool + i;
+        CYBER_BIRD_SAFE_FREE(node->locations);
+    }
+    CYBER_BIRD_SAFE_FREE(this->_nodePool);
+    CYBER_BIRD_SAFE_FREE(this->_leafPool);
 }
 
 IndexNode *IndexTree::newNode(void)

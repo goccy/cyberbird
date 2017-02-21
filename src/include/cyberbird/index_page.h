@@ -3,6 +3,10 @@
 namespace cyberbird {
 
 typedef struct {
+    uint64_t nodePoolPosition;
+    uint64_t nodePoolSize;
+    uint64_t leafPoolPosition;
+    uint64_t leafPoolSize;
 } IndexPageHeader;
 
 class IndexPage {
@@ -16,6 +20,7 @@ public:
 private:
     IndexPageHeader _header;
     IndexTree *_tree;
+    const char *_filename;
 };
 
 }
