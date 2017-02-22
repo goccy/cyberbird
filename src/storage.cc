@@ -107,7 +107,7 @@ array Table::select(double latitude, double longitude, unsigned int zoomLevel, u
     array ret;
     std::vector<IndexLeaf *> indexes = this->_indexPage->tree()->select(Indexer::index(latitude, longitude), zoomLevel, maxZoomLevel);
     for (size_t i = 0; i < indexes.size(); ++i) {
-        ret.push_back(value(this->_rows[indexes[i]->id]));
+        ret.push_back(value(*this->_rows[indexes[i]->id]));
     }
     return ret;
 }
@@ -117,7 +117,7 @@ array Table::select(double latitude, double longitude, unsigned int zoomLevel)
     array ret;
     std::vector<IndexLeaf *> indexes = this->_indexPage->tree()->select(Indexer::index(latitude, longitude), zoomLevel);
     for (size_t i = 0; i < indexes.size(); ++i) {
-        ret.push_back(value(this->_rows[indexes[i]->id]));
+        ret.push_back(value(*this->_rows[indexes[i]->id]));
     }
     return ret;
 }
@@ -131,12 +131,23 @@ uint64_t Table::insert(double latitude, double longitude, const object &o)
     }
 
     uint64_t dataId     = this->_lastId + 1;
-    this->_rows[dataId] = o;
+    this->_rows[dataId] = copyObject(o);
     flush();
     this->_indexPage->tree()->insert(Indexer::index(latitude, longitude), dataId);
     this->_indexPage->save();
     this->_lastId = dataId;
     return dataId;
+}
+
+object *Table::copyObject(const object &from)
+{
+    object *to = new object();
+    size_t columnCount = this->_columns.size();
+    for (size_t i = 1; i < columnCount; ++i) {
+        std::string columnName = std::string(this->_columns[i].name());
+        to->insert(std::make_pair(columnName, value(((object)from)[columnName])));
+    }
+    return to;
 }
 
 bool Table::isValidData(const object &object)
@@ -182,14 +193,14 @@ bool Table::flush(void)
         CYBER_BIRD_LOG_ERROR("cannot open table file");
         return false;
     }
-    std::map<uint64_t, object>::iterator it = this->_rows.begin();
+    std::map<uint64_t, object*>::iterator it = this->_rows.begin();
     size_t dataSize = rowSize();
     char *rowData  = (char *)malloc(dataSize);
     size_t columnCount = this->_columns.size();
 
     for (; it != this->_rows.end(); ++it) {
         uint64_t id = it->first;
-        object &o   = it->second;
+        object &o = *it->second;
         memset(rowData, 0, dataSize);
         char *writePtr = rowData;
         memcpy(writePtr, &id, this->_columns[0].size());

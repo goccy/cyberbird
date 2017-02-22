@@ -76,12 +76,13 @@ private:
     uint64_t _lastId;
     Storage *_storage;
     IndexPage *_indexPage;
-    std::map<uint64_t, object> _rows;
+    std::map<uint64_t, object*> _rows;
 
     Table(const char *tableName, std::vector<Column> columns);
     size_t rowSize(void);
     bool isValidData(const object &object);
     bool flush(void);
+    object *copyObject(const object &o);
 };
 
 class Storage {
