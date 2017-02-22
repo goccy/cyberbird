@@ -11,14 +11,18 @@
 
 using namespace cyberbird;
 
-IndexPage::IndexPage(void) : _filename("index.db")
+IndexPage::IndexPage(const char *filename)
 {
+    size_t len  = strlen(filename) + 1;
+    this->_filename = (char *)malloc(len);
+    strncpy(this->_filename, filename, len);
     this->_tree = new IndexTree();
 }
 
 IndexPage::~IndexPage(void)
 {
     CYBER_BIRD_SAFE_DELETE(this->_tree);
+    CYBER_BIRD_SAFE_FREE(this->_filename);
 }
 
 IndexTree *IndexPage::tree(void)

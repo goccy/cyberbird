@@ -8,7 +8,7 @@ using namespace cyberbird;
 class IndexPageTest : public ::testing::Test{};
 
 TEST_F(IndexPageTest, save_load) {
-    IndexPage page;
+    IndexPage page("index.db");
     IndexTree *tree = page.tree();
 
     double latitude  = 35.65796;

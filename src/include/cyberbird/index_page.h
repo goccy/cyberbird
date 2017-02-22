@@ -11,7 +11,7 @@ typedef struct {
 
 class IndexPage {
 public:
-    IndexPage(void);
+    IndexPage(const char *filename);
     ~IndexPage(void);
     void load(void);
     void save(void);
@@ -20,7 +20,7 @@ public:
 private:
     IndexPageHeader _header;
     IndexTree *_tree;
-    const char *_filename;
+    char *_filename;
 };
 
 }

@@ -1,5 +1,6 @@
 #include <cyberbird/storage.h>
 #include <cyberbird/util.h>
+#include <cyberbird/indexer.h>
 #include <stdint.h>
 #include <string>
 #include <sys/types.h>
@@ -10,6 +11,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <zlib.h>
+
 
 using namespace cyberbird;
 
@@ -75,11 +77,19 @@ Table::Table(const char *tableName, std::vector<Column> columns) :
     size_t len  = strlen(tableName) + 1;
     this->_name = (char *)malloc(len);
     strncpy(this->_name, tableName, len);
+    std::string indexPageName = std::string("index_") + std::string(tableName);
+    this->_indexPage = new IndexPage(indexPageName.c_str());
+    int fd = open(indexPageName.c_str(), O_RDONLY);
+    if (fd > 0) {
+        this->_indexPage->load();
+    }
+    close(fd);
 }
 
 Table::~Table(void)
 {
     CYBER_BIRD_SAFE_FREE(this->_name);
+    CYBER_BIRD_SAFE_DELETE(this->_indexPage);
 }
 
 const char *Table::name(void)
@@ -112,49 +122,10 @@ uint64_t Table::insert(double latitude, double longitude, const object &o)
         return 0;
     }
 
-    uint64_t dataId = this->_lastId + 1;
-    size_t dataSize = rowSize();
-    char *rowData  = (char *)malloc(dataSize);
-    memset(rowData, 0, dataSize);
-    char *writePtr = rowData;
-    size_t columnCount = this->_columns.size();
-    memcpy(writePtr, &dataId, this->_columns[0].size());
-
-    for (size_t i = 1; i < columnCount; ++i) {
-        const Table::Column &column = this->_columns[i];
-        value v = ((object)o)[std::string(((Table::Column)column).name())];
-        size_t size = ((Table::Column)column).size();
-        switch (((Table::Column)column).type()) {
-        case Column::Number: {
-            signed long long number = v.get<long long int>();
-            memcpy(writePtr, &number, size);
-            writePtr += size;
-            break;
-        }
-        case Column::String: {
-            std::string str = v.get<std::string>();
-            memcpy(writePtr, str.c_str(), size);
-            writePtr += size;
-            break;
-        }
-        default:
-            break;
-        }
-    }
-
-    gzFile file = gzopen(this->_name, "wb");
-    if (!file) {
-        CYBER_BIRD_LOG_ERROR("cannot open table file");
-        return 0;
-    }
-
-    int writeError = 0;
-    if ((writeError = gzwrite(file, rowData, dataSize)) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_name, gzerror(file, &writeError));
-        return 0;
-    }
-
-    gzclose(file);
+    uint64_t dataId     = this->_lastId + 1;
+    this->_rows[dataId] = o;
+    flush();
+    this->_indexPage->tree()->insert(Indexer::index(latitude, longitude), 0, 0);
     this->_lastId = dataId;
     return dataId;
 }
@@ -193,6 +164,55 @@ void Table::update(double latitude, double longitude, unsigned int zoomLevel, co
 
 void Table::remove(double latitude, double longitude)
 {
+}
+
+bool Table::flush(void)
+{
+    gzFile file = gzopen(this->_name, "wb");
+    if (!file) {
+        CYBER_BIRD_LOG_ERROR("cannot open table file");
+        return false;
+    }
+    std::map<uint64_t, object>::iterator it = this->_rows.begin();
+    size_t dataSize = rowSize();
+    char *rowData  = (char *)malloc(dataSize);
+    size_t columnCount = this->_columns.size();
+
+    for (; it != this->_rows.end(); ++it) {
+        uint64_t id = it->first;
+        object &o   = it->second;
+        memset(rowData, 0, dataSize);
+        char *writePtr = rowData;
+        memcpy(writePtr, &id, this->_columns[0].size());
+        for (size_t i = 1; i < columnCount; ++i) {
+            const Table::Column &column = this->_columns[i];
+            value v = o[std::string(((Table::Column)column).name())];
+            size_t size = ((Table::Column)column).size();
+            switch (((Table::Column)column).type()) {
+            case Column::Number: {
+                signed long long number = v.get<long long int>();
+                memcpy(writePtr, &number, size);
+                writePtr += size;
+                break;
+            }
+            case Column::String: {
+                std::string str = v.get<std::string>();
+                memcpy(writePtr, str.c_str(), size);
+                writePtr += size;
+                break;
+            }
+            default:
+                break;
+            }
+        }
+        int writeError = 0;
+        if ((writeError = gzwrite(file, rowData, dataSize)) < 0) {
+            CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_name, gzerror(file, &writeError));
+            return false;
+        }
+    }
+    gzclose(file);
+    return true;
 }
 
 Storage::Storage(const char *filename)

@@ -1,7 +1,8 @@
 #ifndef __CYBERBIRD_STORAGE_H__
 #define __CYBERBIRD_STORAGE_H__
 
-#include "data.h"
+#include <cyberbird/data.h>
+#include <cyberbird/index_page.h>
 
 namespace cyberbird {
 
@@ -74,10 +75,13 @@ private:
     std::vector<Column> _columns;
     uint64_t _lastId;
     Storage *_storage;
+    IndexPage *_indexPage;
+    std::map<uint64_t, object> _rows;
 
     Table(const char *tableName, std::vector<Column> columns);
     size_t rowSize(void);
     bool isValidData(const object &object);
+    bool flush(void);
 };
 
 class Storage {
