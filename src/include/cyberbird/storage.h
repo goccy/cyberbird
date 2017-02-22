@@ -79,10 +79,14 @@ public:
     virtual ~Storage(void);
 
     Table *table(const char *tableName);
-    void createTable(Table *table);
+    bool createTable(Table *table);
 private:
-    const char *_filename;
+    char *_filename;
     std::vector<Table *> _tables;
+
+    bool existsTable(Table *table);
+    void loadTables(void);
+    bool flush(void);
 };
 
 }

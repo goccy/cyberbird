@@ -113,28 +113,54 @@ void Table::remove(double latitude, double longitude)
 {
 }
 
-Storage::Storage(const char *filename) : _filename(filename)
+Storage::Storage(const char *filename)
 {
-    gzFile file = gzopen(filename, "rb");
+    size_t len      = strlen(filename) + 1;
+    this->_filename = (char *)malloc(len);
+    strncpy(this->_filename, filename, len);
+    loadTables();
+}
+
+Storage::~Storage(void)
+{
+}
+
+void Storage::loadTables(void)
+{
+    gzFile file = gzopen(this->_filename, "rb");
     if (!file) {
+        CYBER_BIRD_LOG_ERROR("cannot open storage file");
         return;
     }
+
     while (!gzeof(file)) {
         TableHeader tableHeader;
-        if (gzread(file, &tableHeader, sizeof(TableHeader)) < 0) return;
+        if (gzread(file, &tableHeader, sizeof(TableHeader)) < sizeof(TableHeader)) {
+            return;
+        }
 
         char *tableName = (char *)malloc(tableHeader.tableNameSize + 1);
         memset(tableName, 0, tableHeader.tableNameSize + 1);
-        if (gzread(file, tableName, tableHeader.tableNameSize) < 0) return;
+        if (gzread(file, tableName, tableHeader.tableNameSize) < tableHeader.tableNameSize) {
+            CYBER_BIRD_LOG_ERROR("cannot read table name");
+            return;
+        }
+        CYBER_BIRD_LOG_INFO("load TableHeader. table name = [%s]", tableName);
 
         std::vector<Table::Column> columns;
         for (size_t i = 0; i < tableHeader.columnCount; ++i) {
             ColumnHeader columnHeader;
-            if (gzread(file, &columnHeader, sizeof(ColumnHeader)) < 0) return;
+            if (gzread(file, &columnHeader, sizeof(ColumnHeader)) < sizeof(ColumnHeader)) {
+                CYBER_BIRD_LOG_ERROR("cannot read ColumnHeader");
+                return;
+            }
 
             char *columnName = (char *)malloc(columnHeader.nameLength + 1);
             memset(columnName, 0, columnHeader.nameLength + 1);
-            if (gzread(file, columnName, columnHeader.nameLength) < 0) return;
+            if (gzread(file, columnName, columnHeader.nameLength) < columnHeader.nameLength) {
+                CYBER_BIRD_LOG_ERROR("cannot read column name");
+                return;
+            }
 
             Table::Column column(columnName, (Table::Column::Type)columnHeader.type, columnHeader.size);
             columns.push_back(column);
@@ -146,56 +172,84 @@ Storage::Storage(const char *filename) : _filename(filename)
     gzclose(file);
 }
 
-Storage::~Storage(void)
-{
-}
-
 Table *Storage::table(const char *tableName)
 {
-    return new Table(tableName);
+    size_t tableCount = this->_tables.size();
+    for (size_t i = 0; i < tableCount; ++i) {
+        Table *table = this->_tables[i];
+        if (std::string(table->name()) == tableName) return table;
+    }
+    return NULL;
 }
 
-void Storage::createTable(Table *table)
+bool Storage::existsTable(Table *targetTable)
 {
-    const char *name = table->name();
+    size_t tableCount = this->_tables.size();
+    std::string tableName = std::string(targetTable->name());
+    for (size_t i = 0; i < tableCount; ++i) {
+        Table *table = this->_tables[i];
+        if (std::string(table->name()) == tableName) return true;
+    }
+    return false;
+}
+
+bool Storage::createTable(Table *table)
+{
+    if (existsTable(table)) {
+        CYBER_BIRD_LOG_WARN("%s is already exists.", table->name());
+        return false;
+    }
+    this->_tables.push_back(table);
+    return flush();
+}
+
+bool Storage::flush(void)
+{
     gzFile file = gzopen(this->_filename, "wb");
     if (!file) {
-        CYBER_BIRD_LOG_ERROR("cannot create|open %s. %s", this->_filename, strerror(errno));
-        return;
+        CYBER_BIRD_LOG_ERROR("cannot open %s. %s", this->_filename, strerror(errno));
+        return false;
     }
 
-    const std::vector<Table::Column> &columns = table->columns();
-    TableHeader tableHeader;
-    tableHeader.tableNameSize = strlen(name);
-    tableHeader.columnCount   = columns.size();
-    int writeError = 0;
-    if ((writeError = gzwrite(file, (char *)&tableHeader, sizeof(TableHeader))) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
-        return;
-    }
+    size_t tableCount = this->_tables.size();
+    for (size_t i = 0; i < tableCount; ++i) {
+        Table *table = this->_tables[i];
+        const char *name = table->name();
+        const std::vector<Table::Column> &columns = table->columns();
+        TableHeader tableHeader;
+        tableHeader.tableNameSize = strlen(name);
+        tableHeader.columnCount   = columns.size();
+        int writeError = 0;
 
-    if ((writeError = gzwrite(file, name, tableHeader.tableNameSize)) < 0) {
-        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
-        return;
-    }
-
-    for (size_t i = 0; i < columns.size(); ++i) {
-        ColumnHeader columnHeader;
-        const Table::Column &column = columns[i];
-        const char *columnName = ((Table::Column)column).name();
-        columnHeader.nameLength = strlen(columnName);
-        columnHeader.type       = ((Table::Column)column).type();
-        columnHeader.size       = ((Table::Column)column).size();
-
-        if ((writeError = gzwrite(file, (char *)&columnHeader, sizeof(ColumnHeader))) < 0) {
+        if ((writeError = gzwrite(file, (char *)&tableHeader, sizeof(TableHeader))) < 0) {
             CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
-            return;
+            return false;
         }
 
-        if ((writeError = gzwrite(file, columnName, columnHeader.nameLength)) < 0) {
+        if ((writeError = gzwrite(file, name, tableHeader.tableNameSize)) < 0) {
             CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
-            return;
+            return false;
+        }
+
+        for (size_t i = 0; i < columns.size(); ++i) {
+            ColumnHeader columnHeader;
+            const Table::Column &column = columns[i];
+            const char *columnName = ((Table::Column)column).name();
+            columnHeader.nameLength = strlen(columnName);
+            columnHeader.type       = ((Table::Column)column).type();
+            columnHeader.size       = ((Table::Column)column).size();
+
+            if ((writeError = gzwrite(file, (char *)&columnHeader, sizeof(ColumnHeader))) < 0) {
+                CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
+                return false;
+            }
+
+            if ((writeError = gzwrite(file, columnName, columnHeader.nameLength)) < 0) {
+                CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_filename, gzerror(file, &writeError));
+                return false;
+            }
         }
     }
     gzclose(file);
+    return true;
 }
