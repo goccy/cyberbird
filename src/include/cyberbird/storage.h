@@ -11,6 +11,7 @@ namespace cyberbird {
 typedef struct {
     size_t tableNameSize;
     size_t columnCount;
+    uint64_t lastId;
 } TableHeader;
 
 typedef struct {
@@ -63,14 +64,20 @@ public:
 
     array select(double latitude, double longitude, unsigned int zoomLevel);
     array select(double latitude, double longitude);
-    void insert(double latitude, double longitude, unsigned int zoomLevel, const value &value);
-    void update(double latitude, double longitude, unsigned int zoomLevel, const value &value);
+    uint64_t insert(double latitude, double longitude, const object &value);
+    uint64_t insert(double latitude, double longitude, unsigned int zoomLevel, const object &value);
+    void update(double latitude, double longitude, unsigned int zoomLevel, const object &value);
     void remove(double latitude, double longitude);
 
 private:
     char *_name;
     std::vector<Column> _columns;
+    uint64_t _lastId;
+    Storage *_storage;
+
     Table(const char *tableName, std::vector<Column> columns);
+    size_t rowSize(void);
+    bool isValidData(const object &object);
 };
 
 class Storage {

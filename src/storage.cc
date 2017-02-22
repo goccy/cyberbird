@@ -34,6 +34,8 @@ Table::Column::~Column(void)
 
 Table::Builder::Builder(const char *tableName) : _tableName(tableName)
 {
+    Table::Column column("id", Table::Column::Number, sizeof(uint64_t));
+    this->_columns.push_back(column);
 }
 
 Table::Builder::~Builder()
@@ -67,7 +69,8 @@ Table::Table(const char *tableName)
 }
 
 Table::Table(const char *tableName, std::vector<Column> columns) :
-    _columns(columns)
+    _columns(columns),
+    _lastId(0)
 {
     size_t len  = strlen(tableName) + 1;
     this->_name = (char *)malloc(len);
@@ -101,11 +104,90 @@ array Table::select(double latitude, double longitude)
     return a;
 }
 
-void Table::insert(double latitude, double longitude, unsigned int zoomLevel, const value &value)
+uint64_t Table::insert(double latitude, double longitude, const object &o)
 {
+    if (!isValidData(o)) return 0;
+    if (!this->_storage) {
+        CYBER_BIRD_LOG_ERROR("must be created this table before insert. show Storage::createTable");
+        return 0;
+    }
+
+    uint64_t dataId = this->_lastId + 1;
+    size_t dataSize = rowSize();
+    char *rowData  = (char *)malloc(dataSize);
+    memset(rowData, 0, dataSize);
+    char *writePtr = rowData;
+    size_t columnCount = this->_columns.size();
+    memcpy(writePtr, &dataId, this->_columns[0].size());
+
+    for (size_t i = 1; i < columnCount; ++i) {
+        const Table::Column &column = this->_columns[i];
+        value v = ((object)o)[std::string(((Table::Column)column).name())];
+        size_t size = ((Table::Column)column).size();
+        switch (((Table::Column)column).type()) {
+        case Column::Number: {
+            signed long long number = v.get<long long int>();
+            memcpy(writePtr, &number, size);
+            writePtr += size;
+            break;
+        }
+        case Column::String: {
+            std::string str = v.get<std::string>();
+            memcpy(writePtr, str.c_str(), size);
+            writePtr += size;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    gzFile file = gzopen(this->_name, "wb");
+    if (!file) {
+        CYBER_BIRD_LOG_ERROR("cannot open table file");
+        return 0;
+    }
+
+    int writeError = 0;
+    if ((writeError = gzwrite(file, rowData, dataSize)) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_name, gzerror(file, &writeError));
+        return 0;
+    }
+
+    gzclose(file);
+    this->_lastId = dataId;
+    return dataId;
 }
 
-void Table::update(double latitude, double longitude, unsigned int zoomLevel, const value &value)
+bool Table::isValidData(const object &object)
+{
+    size_t columnCount = this->_columns.size();
+    // columns[0] is 'id' column
+    for (size_t i = 1; i < columnCount; ++i) {
+        if (object.find(std::string(this->_columns[i].name())) == object.end()) {
+            CYBER_BIRD_LOG_ERROR("cannot find '%s' from object.", this->_columns[i].name());
+            return false;
+        }
+    }
+    return true;
+}
+
+size_t Table::rowSize(void)
+{
+    size_t ret = 0;
+    size_t columnCount = this->_columns.size();
+    for (size_t i = 0; i < columnCount; ++i) {
+        ret += this->_columns[i].size();
+    }
+    return ret;
+}
+
+uint64_t Table::insert(double latitude, double longitude, unsigned int zoomLevel, const object &object)
+{
+    return 0;
+}
+
+void Table::update(double latitude, double longitude, unsigned int zoomLevel, const object &object)
 {
 }
 
@@ -166,7 +248,10 @@ void Storage::loadTables(void)
             columns.push_back(column);
             CYBER_BIRD_SAFE_FREE(columnName);
         }
-        this->_tables.push_back(new Table(tableName, columns));
+        Table *table    = new Table(tableName, columns);
+        table->_storage = this;
+        table->_lastId  = tableHeader.lastId;
+        this->_tables.push_back(table);
         CYBER_BIRD_SAFE_FREE(tableName);
     }
     gzclose(file);
@@ -199,6 +284,7 @@ bool Storage::createTable(Table *table)
         CYBER_BIRD_LOG_WARN("%s is already exists.", table->name());
         return false;
     }
+    table->_storage = this;
     this->_tables.push_back(table);
     return flush();
 }
