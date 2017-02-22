@@ -63,8 +63,8 @@ public:
     const char *name(void);
     const std::vector<Column> &columns();
 
+    array select(double latitude, double longitude, unsigned int zoomLevel, unsigned int maxZoomLevel);
     array select(double latitude, double longitude, unsigned int zoomLevel);
-    array select(double latitude, double longitude);
     uint64_t insert(double latitude, double longitude, const object &value);
     uint64_t insert(double latitude, double longitude, unsigned int zoomLevel, const object &value);
     void update(double latitude, double longitude, unsigned int zoomLevel, const object &value);

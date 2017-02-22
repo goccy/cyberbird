@@ -14,8 +14,7 @@ struct _IndexNode;
 
 typedef struct {
     uint64_t key;
-    uint64_t offset;
-    uint64_t size;
+    uint64_t id;
     union {
         struct _IndexNode *ptr;
         uint64_t index;
@@ -62,9 +61,8 @@ public:
     ~IndexTree(void);
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel);
     std::vector<IndexLeaf *> select(uint64_t key, unsigned int zoomLevel, unsigned int maxZoomLevel);
-    void insert(uint64_t key, uint64_t offest, uint64_t size);
-    void insert(uint64_t key, uint64_t offest, uint64_t size, unsigned int cacheZoomLevel);
-    void update(uint64_t key, uint64_t offest, uint64_t size);
+    void insert(uint64_t key, uint64_t id);
+    void insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel);
     void remove(uint64_t key);
     IndexNode *rootNode(void);
     EncodeBuffer encodeNodePool(void);
@@ -82,7 +80,7 @@ private:
     std::vector<IndexLeaf *> getAllLocation(IndexNode *node, unsigned int maxZoomLevel);
     IndexNode *newNode();
     IndexNode *newNode(unsigned int zoomLevel);
-    IndexLeaf *newLeaf(uint64_t key, uint64_t offset, uint64_t size, IndexNode *node);
+    IndexLeaf *newLeaf(uint64_t key, uint64_t id, IndexNode *node);
     void allocNodeLocations(IndexNode *node);
     void expandNodeLocations(IndexNode *node);
 };

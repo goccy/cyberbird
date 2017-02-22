@@ -83,7 +83,7 @@ IndexNode *IndexTree::newNode(unsigned int zoomLevel)
     return node;
 }
 
-IndexLeaf *IndexTree::newLeaf(uint64_t key, uint64_t offset, uint64_t size, IndexNode *node)
+IndexLeaf *IndexTree::newLeaf(uint64_t key, uint64_t id, IndexNode *node)
 {
     if (this->_currentLeafCount + 1 == this->_currentLeafPoolCapacity) {
         // expand leafPool size
@@ -92,8 +92,7 @@ IndexLeaf *IndexTree::newLeaf(uint64_t key, uint64_t offset, uint64_t size, Inde
     }
     IndexLeaf *leaf = (IndexLeaf *)this->_leafPool + this->_currentLeafCount;
     leaf->key       = key;
-    leaf->offset    = offset;
-    leaf->size      = size;
+    leaf->id        = id;
     leaf->node.ptr  = node;
     this->_currentLeafCount++;
     return leaf;
@@ -221,12 +220,12 @@ std::vector<IndexLeaf *> IndexTree::getAllLocation(IndexNode *node, unsigned int
     return ret;
 }
 
-void IndexTree::insert(uint64_t key, uint64_t offset, uint64_t size)
+void IndexTree::insert(uint64_t key, uint64_t id)
 {
-    insert(key, offset, size, 0);
+    insert(key, id, 0);
 }
 
-void IndexTree::insert(uint64_t key, uint64_t offset, uint64_t size, unsigned int cacheZoomLevel)
+void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
 {
     uint64_t count = CYBER_BIRD_MAX_ZOOM_LEVEL << 1;
     IndexNode *currentNode = this->_rootNode;
@@ -275,7 +274,7 @@ void IndexTree::insert(uint64_t key, uint64_t offset, uint64_t size, unsigned in
             } else if (currentNode->locationCount == currentNode->locationCapacity) {
                 expandNodeLocations(currentNode);
             }
-            currentNode->locations[currentNode->locationCount] = newLeaf(key, offset, size, currentNode);
+            currentNode->locations[currentNode->locationCount] = newLeaf(key, id, currentNode);
             currentNode->locationCount++;
         }
     }
@@ -291,11 +290,6 @@ void IndexTree::expandNodeLocations(IndexNode *node)
 {
     node->locationCapacity *= 2;
     node->locations = (IndexLeaf **)realloc(node->locations, node->locationCapacity);
-}
-
-void IndexTree::update(uint64_t key, uint64_t offset, uint64_t size)
-{
-    
 }
 
 void IndexTree::remove(uint64_t key)
