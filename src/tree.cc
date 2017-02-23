@@ -42,15 +42,15 @@ IndexTree::IndexTree(EncodeBuffer *nodePoolBuffer, EncodeBuffer *leafPoolBuffer)
         SET_PTR_FROM_INDEX(this->_nodePool, node, bottomLeft);
         SET_PTR_FROM_INDEX(this->_nodePool, node, bottomRight);
     }
-    std::map<IndexNode *, size_t> nodeLocationMap;
+    std::map<uint64_t, size_t> nodeLocationMap;
     for (size_t i = 0; i < this->_currentLeafCount; ++i) {
         IndexLeaf *leaf = this->_leafPool + i;
         IndexNode *node = this->_nodePool + leaf->node.index;
         leaf->node.ptr  = node;
         node->locations = (IndexLeaf **)calloc(node->locationCapacity, sizeof(IndexLeaf *));
-        size_t locationCount = nodeLocationMap[node];
+        size_t locationCount = nodeLocationMap[leaf->node.index];
         node->locations[locationCount] = leaf;
-        nodeLocationMap[node] = locationCount + 1;
+        nodeLocationMap[leaf->node.index] = locationCount + 1;
     }
     this->_rootNode = (IndexNode *)this->_nodePool;
 }
@@ -187,12 +187,14 @@ std::vector<IndexLeaf *> IndexTree::getAllLocation(IndexNode *node, unsigned int
 
     size_t locationCount = node->locationCount;
     for (size_t i = 0; i < locationCount; ++i) {
+        CYBER_BIRD_ASSERT(node->locations[i], "node->location is NULL");
         ret.push_back(node->locations[i]);
     }
     if (node->topLeft.node) {
         std::vector<IndexLeaf *> locations = getAllLocation(node->topLeft.node, maxZoomLevel);
         size_t locationCount = locations.size();
         for (size_t i = 0; i < locationCount; ++i) {
+            CYBER_BIRD_ASSERT(locations[i], "location is NULL");
             ret.push_back(locations[i]);
         }
     }
@@ -200,6 +202,7 @@ std::vector<IndexLeaf *> IndexTree::getAllLocation(IndexNode *node, unsigned int
         std::vector<IndexLeaf *> locations = getAllLocation(node->topRight.node, maxZoomLevel);
         size_t locationCount = locations.size();
         for (size_t i = 0; i< locationCount; ++i) {
+            CYBER_BIRD_ASSERT(locations[i], "location is NULL");
             ret.push_back(locations[i]);
         }
     }
@@ -207,6 +210,7 @@ std::vector<IndexLeaf *> IndexTree::getAllLocation(IndexNode *node, unsigned int
         std::vector<IndexLeaf *> locations = getAllLocation(node->bottomLeft.node, maxZoomLevel);
         size_t locationCount = locations.size();
         for (size_t i = 0; i< locationCount; ++i) {
+            CYBER_BIRD_ASSERT(locations[i], "location is NULL");
             ret.push_back(locations[i]);
         }
     }
@@ -214,6 +218,7 @@ std::vector<IndexLeaf *> IndexTree::getAllLocation(IndexNode *node, unsigned int
         std::vector<IndexLeaf *> locations = getAllLocation(node->bottomRight.node, maxZoomLevel);
         size_t locationCount = locations.size();
         for (size_t i = 0; i< locationCount; ++i) {
+            CYBER_BIRD_ASSERT(locations[i], "location is NULL");
             ret.push_back(locations[i]);
         }
     }

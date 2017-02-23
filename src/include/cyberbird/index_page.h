@@ -21,6 +21,8 @@ private:
     IndexPageHeader _header;
     IndexTree *_tree;
     char *_filename;
+
+    bool existsFile(void);
 };
 
 }

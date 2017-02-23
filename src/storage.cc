@@ -63,13 +63,6 @@ Table *Table::Builder::build(void)
     return new Table(this->_tableName, this->_columns);
 }
 
-Table::Table(const char *tableName)
-{
-    size_t len  = strlen(tableName) + 1;
-    this->_name = (char *)malloc(len);
-    strncpy(this->_name, tableName, len);
-}
-
 Table::Table(const char *tableName, std::vector<Column> columns) :
     _columns(columns),
     _lastId(0)
@@ -79,11 +72,8 @@ Table::Table(const char *tableName, std::vector<Column> columns) :
     strncpy(this->_name, tableName, len);
     std::string indexPageName = std::string("index_") + std::string(tableName);
     this->_indexPage = new IndexPage(indexPageName.c_str());
-    int fd = open(indexPageName.c_str(), O_RDONLY);
-    if (fd > 0) {
-        this->_indexPage->load();
-    }
-    close(fd);
+    this->_indexPage->load();
+    load();
 }
 
 Table::~Table(void)
@@ -186,6 +176,72 @@ void Table::remove(double latitude, double longitude)
 {
 }
 
+bool Table::existsFile(void)
+{
+    bool ret = true;
+    int fd   = open(this->_name, O_RDONLY);
+    if (fd <= 0) {
+        ret = false;
+    }
+    close(fd);
+    return ret;
+}
+
+bool Table::load(void)
+{
+    if (!existsFile()) return false;
+
+    gzFile file = gzopen(this->_name, "rb");
+    if (!file) {
+        CYBER_BIRD_LOG_ERROR("cannot open table file");
+        return false;
+    }
+    size_t rowCount = 0;
+    if (gzread(file, &rowCount, sizeof(size_t)) < sizeof(size_t)) {
+        return false;
+    }
+    size_t dataSize = rowSize();
+    size_t columnCount = this->_columns.size();
+    for (size_t i = 0; i < rowCount; ++i) {
+        uint64_t id = 0;
+        if (gzread(file, &id, sizeof(uint64_t)) < sizeof(uint64_t)) {
+            return false;
+        }
+        object *o   = new object();
+        for (size_t i = 1; i < columnCount; ++i) {
+            const Table::Column &column = this->_columns[i];
+            const char *name = ((Table::Column)column).name();
+            size_t size      = ((Table::Column)column).size();
+            switch (((Table::Column)column).type()) {
+            case Column::Number: {
+                long long int number;
+                if (gzread(file, &number, size) < size) {
+                    return false;
+                }
+                o->insert(std::make_pair(std::string(name), value(number)));
+                break;
+            }
+            case Column::String: {
+                char *buf = (char *)malloc(size + 1);
+                memset(buf, 0, size + 1);
+                if (gzread(file, buf, size) < size) {
+                    return false;
+                }
+                std::string str = std::string(buf);
+                o->insert(std::make_pair(std::string(name), value(str)));
+                CYBER_BIRD_SAFE_FREE(buf);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+        this->_rows[id] = o;
+    }
+    gzclose(file);
+    return true;
+}
+
 bool Table::flush(void)
 {
     gzFile file = gzopen(this->_name, "wb");
@@ -197,6 +253,12 @@ bool Table::flush(void)
     size_t dataSize = rowSize();
     char *rowData  = (char *)malloc(dataSize);
     size_t columnCount = this->_columns.size();
+    int writeError = 0;
+    size_t rowCount = this->_rows.size();
+    if ((writeError = gzwrite(file, (char *)&rowCount, sizeof(size_t))) < 0) {
+        CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_name, gzerror(file, &writeError));
+        return false;
+    }
 
     for (; it != this->_rows.end(); ++it) {
         uint64_t id = it->first;
@@ -204,13 +266,14 @@ bool Table::flush(void)
         memset(rowData, 0, dataSize);
         char *writePtr = rowData;
         memcpy(writePtr, &id, this->_columns[0].size());
+        writePtr += this->_columns[0].size();
         for (size_t i = 1; i < columnCount; ++i) {
             const Table::Column &column = this->_columns[i];
             value v = o[std::string(((Table::Column)column).name())];
             size_t size = ((Table::Column)column).size();
             switch (((Table::Column)column).type()) {
             case Column::Number: {
-                signed long long number = v.get<long long int>();
+                long long int number = v.get<long long int>();
                 memcpy(writePtr, &number, size);
                 writePtr += size;
                 break;
@@ -225,7 +288,6 @@ bool Table::flush(void)
                 break;
             }
         }
-        int writeError = 0;
         if ((writeError = gzwrite(file, rowData, dataSize)) < 0) {
             CYBER_BIRD_LOG_ERROR("cannot write to %s. %s", this->_name, gzerror(file, &writeError));
             return false;
@@ -267,7 +329,6 @@ void Storage::loadTables(void)
             CYBER_BIRD_LOG_ERROR("cannot read table name");
             return;
         }
-        CYBER_BIRD_LOG_INFO("load TableHeader. table name = [%s]", tableName);
 
         std::vector<Table::Column> columns;
         for (size_t i = 0; i < tableHeader.columnCount; ++i) {

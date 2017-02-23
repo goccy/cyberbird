@@ -30,8 +30,19 @@ IndexTree *IndexPage::tree(void)
     return this->_tree;
 }
 
+bool IndexPage::existsFile(void)
+{
+    bool ret = true;
+    int fd   = open(this->_filename, O_RDONLY);
+    if (fd <= 0) ret = false;
+    close(fd);
+    return ret;
+}
+
 void IndexPage::load(void)
 {
+    if (!existsFile()) return;
+
     gzFile file = gzopen(this->_filename, "rb");
     if (!file) {
         CYBER_BIRD_LOG_ERROR("cannot open %s. %s", this->_filename, strerror(errno));

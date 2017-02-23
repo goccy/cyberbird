@@ -1,3 +1,8 @@
+#ifndef __CYBERBIRD_UTIL_H__
+#define __CYBERBIRD_UTIL_H__
+
+#include <assert.h>
+
 #define CYBER_BIRD_MAX_ZOOM_LEVEL (32)
 
 #define CYBER_BIRD_LOG_DEVELOP(LOG_TYPE, ...) do {                      \
@@ -39,3 +44,12 @@
             ptr = NULL;                         \
         }                                       \
     } while (0)
+
+#define CYBER_BIRD_ASSERT(cond, msg) do {       \
+        if (!cond) {                            \
+            CYBER_BIRD_LOG_ERROR(msg);          \
+        }                                       \
+        assert(cond);                           \
+    } while (0)
+
+#endif /* __CYBERBIRD_UTIL_H__ */

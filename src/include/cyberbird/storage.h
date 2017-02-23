@@ -58,7 +58,6 @@ public:
         std::vector<Column> _columns;
     };
 
-    Table(const char *tableName);
     virtual ~Table(void);
     const char *name(void);
     const std::vector<Column> &columns();
@@ -83,6 +82,8 @@ private:
     bool isValidData(const object &object);
     bool flush(void);
     object *copyObject(const object &o);
+    bool load(void);
+    bool existsFile(void);
 };
 
 class Storage {

@@ -49,5 +49,43 @@ TEST_F(StorageTest, insert) {
     o.insert(std::make_pair("age", cyberbird::value(20)));
     EXPECT_GT(personTable->insert(latitude, longitude, o), 0);
 
+    unlink("person");
+    unlink("index.db");
+    unlink("index_person");
+    unlink(path);
+}
+
+TEST_F(StorageTest, flush_load) {
+    Table::Builder personBuilder("person");
+    Table *personTable = personBuilder.addStringColumn("name", 16)->addNumberColumn("age")->build();
+
+    char path[PATH_MAX] = {0};
+    std::string pathTemplate = "/tmp/storage.dbXXXXXX";
+    int fd = mkstemp((char *)pathTemplate.c_str());
+    if (fcntl(fd, F_GETPATH, path) == -1) {
+        EXPECT_TRUE(false);
+    }
+    Storage storage((const char *)path);
+
+    double latitude  = 35.65796;
+    double longitude = 139.708928;
+    cyberbird::object o;
+    o.insert(std::make_pair("name", cyberbird::value("bob")));
+    o.insert(std::make_pair("age", cyberbird::value(20)));
+
+    storage.createTable(personTable);
+    personTable->insert(latitude, longitude, o);
+
+    Storage newStorage((const char *)path);
+    Table *loadedPersonTable = newStorage.table("person");
+
+    cyberbird::array people = loadedPersonTable->select(latitude, longitude, 1);
+    EXPECT_EQ(people.size(), 1);
+    cyberbird::object person = people[0].get<cyberbird::object>();
+    EXPECT_EQ(person["name"].get<std::string>(), "bob");
+    EXPECT_EQ(person["age"].get<long long int>(), 20);
+    unlink("index_person");
+    unlink("person");
+    unlink("index.db");
     unlink(path);
 }
