@@ -49,9 +49,6 @@ TEST_F(StorageTest, insert) {
     o.insert(std::make_pair("age", cyberbird::value(20)));
     EXPECT_GT(personTable->insert(latitude, longitude, o), 0);
 
-    unlink("person");
-    unlink("index.db");
-    unlink("index_person");
     unlink(path);
 }
 
@@ -84,8 +81,5 @@ TEST_F(StorageTest, flush_load) {
     cyberbird::object person = people[0].get<cyberbird::object>();
     EXPECT_EQ(person["name"].get<std::string>(), "bob");
     EXPECT_EQ(person["age"].get<long long int>(), 20);
-    unlink("index_person");
-    unlink("person");
-    unlink("index.db");
     unlink(path);
 }

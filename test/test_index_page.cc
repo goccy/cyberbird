@@ -8,7 +8,7 @@ using namespace cyberbird;
 class IndexPageTest : public ::testing::Test{};
 
 TEST_F(IndexPageTest, save_load) {
-    IndexPage page("index.db");
+    IndexPage page;
     IndexTree *tree = page.tree();
 
     double latitude  = 35.65796;
@@ -22,13 +22,20 @@ TEST_F(IndexPageTest, save_load) {
     tree->insert(index, 0, 0);
     tree->insert(stationIndex, 0, 0);
 
-    page.save();
-    page.load();
-
+    {
+        Writer writer("index.db");
+        page.flush(&writer);
+    }
+    {
+        Reader reader("index.db");
+        page.load(&reader);
+    }
     IndexTree *loadedTree = page.tree();
     EXPECT_EQ(loadedTree->select(index, 14).size(), 1);
     EXPECT_EQ(loadedTree->select(index, 13).size(), 2);
 
     EXPECT_EQ(loadedTree->select(index, 10).size(), 2);
     EXPECT_EQ(loadedTree->select(index, 10, 13).size(), 0);
+
+    unlink("index.db");
 }

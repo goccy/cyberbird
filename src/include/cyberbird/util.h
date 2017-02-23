@@ -1,6 +1,7 @@
 #ifndef __CYBERBIRD_UTIL_H__
 #define __CYBERBIRD_UTIL_H__
 
+#include <stdio.h>
 #include <assert.h>
 
 #define CYBER_BIRD_MAX_ZOOM_LEVEL (32)

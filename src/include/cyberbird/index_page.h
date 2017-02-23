@@ -1,4 +1,9 @@
+#ifndef __CYBERBIRD_INDEX_PAGE__
+#define __CYBERBIRD_INDEX_PAGE__
+
 #include <cyberbird/index_tree.h>
+#include <cyberbird/reader.h>
+#include <cyberbird/writer.h>
 
 namespace cyberbird {
 
@@ -11,18 +16,17 @@ typedef struct {
 
 class IndexPage {
 public:
-    IndexPage(const char *filename);
+    IndexPage(void);
     ~IndexPage(void);
-    void load(void);
-    void save(void);
+    bool load(Reader *reader);
+    bool flush(Writer *writer);
     IndexTree *tree(void);
 
 private:
     IndexPageHeader _header;
     IndexTree *_tree;
-    char *_filename;
-
-    bool existsFile(void);
 };
 
 }
+
+#endif /* __CYBERBIRD_INDEX_PAGE__ */

@@ -3,6 +3,8 @@
 
 #include <cyberbird/data.h>
 #include <cyberbird/index_page.h>
+#include <cyberbird/reader.h>
+#include <cyberbird/writer.h>
 
 namespace cyberbird {
 
@@ -80,13 +82,13 @@ private:
     Table(const char *tableName, std::vector<Column> columns);
     size_t rowSize(void);
     bool isValidData(const object &object);
-    bool flush(void);
+    bool flush(Writer *writer);
     object *copyObject(const object &o);
-    bool load(void);
-    bool existsFile(void);
+    bool load(Reader *reader);
 };
 
 class Storage {
+    friend class Table;
 public:
     Storage(const char *filename);
     virtual ~Storage(void);
@@ -98,8 +100,12 @@ private:
     std::vector<Table *> _tables;
 
     bool existsTable(Table *table);
-    void loadTables(void);
+    bool load(void);
     bool flush(void);
+    size_t headerPageSize(void);
+    bool writeHeader(Writer *writer);
+    bool readHeader(Reader *reader);
+    bool canLoad(void);
 };
 
 }
