@@ -1,8 +1,14 @@
 #ifndef __CYBERBIRD_H__
 #define __CYBERBIRD_H__
 
-#include "data.h"
-#include "storage.h"
+#include <cyberbird/data.h>
+#include <cyberbird/index_tree.h>
+#include <cyberbird/index_page.h>
+#include <cyberbird/indexer.h>
+#include <cyberbird/reader.h>
+#include <cyberbird/storage.h>
+#include <cyberbird/util.h>
+#include <cyberbird/writer.h>
 
 namespace cyberbird {
 

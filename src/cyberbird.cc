@@ -17,6 +17,7 @@ void CyberBird::wake(const char *filename)
 
 void CyberBird::sleep(void)
 {
+    CYBER_BIRD_SAFE_DELETE(this->_storage);
 }
 
 Storage *CyberBird::storage()

@@ -1,3 +1,6 @@
+#ifndef __CYBERBIRD_INDEX_TREE__
+#define __CYBERBIRD_INDEX_TREE__
+
 #include <stdint.h>
 #include <vector>
 
@@ -86,3 +89,5 @@ private:
 };
 
 }
+
+#endif /* __CYBERBIRD_INDEX_TREE__ */
