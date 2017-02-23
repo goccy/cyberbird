@@ -21,10 +21,12 @@ TEST_F(CyberBirdTest, main) {
     cyberbird::Table *table = builder.addStringColumn("name", 16)->addNumberColumn("age")->build();
     storage->createTable(table);
 
-    cyberbird::object o;
-    o.insert(std::make_pair("name", cyberbird::value("bob")));
-    o.insert(std::make_pair("age", cyberbird::value(20)));
-    storage->table("person")->insert(35.65796, 139.708928, o);
+    {
+        cyberbird::object o;
+        o.insert(std::make_pair("name", cyberbird::value("bob")));
+        o.insert(std::make_pair("age", cyberbird::value(20)));
+        storage->table("person")->insert(35.65796, 139.708928, o);
+    }
 
     cyberbird::array people = storage->table("person")->select(35.65796, 139.708928, 1);
     EXPECT_EQ(people.size(), 1);

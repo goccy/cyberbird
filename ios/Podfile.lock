@@ -1,0 +1,16 @@
+PODS:
+  - CyberBird (0.0.1)
+
+DEPENDENCIES:
+  - CyberBird (from `../`)
+
+EXTERNAL SOURCES:
+  CyberBird:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  CyberBird: 3e863378177daf9f43cd69a1fee823cb28785d49
+
+PODFILE CHECKSUM: 2dd160ff9ce9a9e48cfe28234e7e6b73ef616159
+
+COCOAPODS: 1.2.0
