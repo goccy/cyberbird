@@ -95,13 +95,13 @@ public:
 
     Table *table(const char *tableName);
     bool createTable(Table *table);
+    bool flush(void);
 private:
     char *_filename;
     std::vector<Table *> _tables;
 
     bool existsTable(Table *table);
     bool load(void);
-    bool flush(void);
     size_t headerPageSize(void);
     bool writeHeader(Writer *writer);
     bool readHeader(Reader *reader);

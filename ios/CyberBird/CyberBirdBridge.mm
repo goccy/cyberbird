@@ -8,24 +8,9 @@
 
 #import "CyberBirdBridge.h"
 #import "CBStorage.h"
+#import "CBDataBridge.h"
 #import <cyberbird/cyberbird.h>
-
-@interface CBStorage()
-
-@property(nonatomic) cyberbird::Storage *nativeInstance;
-
-@end
-
-@implementation CBStorage
-
-- (instancetype)initWithNativeStorage:(cyberbird::Storage *)storage
-{
-    self = [super init];
-    self.nativeInstance = storage;
-    return self;
-}
-
-@end
+#import "CBStoragePrivate.h"
 
 @interface CyberBirdBridge()
 
@@ -42,14 +27,20 @@
     return self;
 }
 
-- (oneway void)release
-{
-    CYBER_BIRD_SAFE_DELETE(self.nativeInstance);
-}
-
 - (void)wake:(NSURL *)filePath
 {
     self.nativeInstance->wake([[filePath path] UTF8String]);
+}
+
+- (void)sleep
+{
+    self.nativeInstance->sleep();
+}
+
+- (NSArray *)fly:(NSString *)tableName latitude:(double)latitude longitude:(double)longitude zoomLevel:(NSUInteger)zoomLevel
+{
+    cyberbird::array array = self.nativeInstance->fly([tableName UTF8String], latitude, longitude, zoomLevel);
+    return [CBDataBridge toNSArray:array];
 }
 
 - (CBStorage *)storage

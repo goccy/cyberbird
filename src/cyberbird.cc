@@ -24,3 +24,8 @@ Storage *CyberBird::storage()
 {
     return this->_storage;
 }
+
+array CyberBird::fly(const char *tableName, double latitude, double longitude, unsigned int zoomLevel)
+{
+    return this->_storage->table(tableName)->select(latitude, longitude, zoomLevel);
+}

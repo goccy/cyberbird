@@ -9,8 +9,8 @@ static const int DEFAULT_LOCATION_COUNT = 8;
 
 IndexTree::IndexTree(void)
 {
-    static const int DEFAULT_NODE_POOL_CAPACITY = 1024;
-    static const int DEFAULT_LEAF_POOL_CAPACITY = 1024;
+    static const int DEFAULT_NODE_POOL_CAPACITY = 8192;
+    static const int DEFAULT_LEAF_POOL_CAPACITY = 8192;
 
     this->_currentNodePoolCapacity = DEFAULT_NODE_POOL_CAPACITY;
     this->_currentLeafPoolCapacity = DEFAULT_LEAF_POOL_CAPACITY;
@@ -74,8 +74,14 @@ IndexNode *IndexTree::newNode(unsigned int zoomLevel)
 {
     if (this->_currentNodeCount + 1 == this->_currentNodePoolCapacity) {
         // expand nodePool size
-        this->_currentNodePoolCapacity *= 2;
-        this->_nodePool = (IndexNodePool *)realloc(this->_nodePool, this->_currentNodePoolCapacity);
+        size_t expandCapacity = this->_currentNodePoolCapacity * 2;
+        IndexNodePool *expandedNodePool = (IndexNodePool *)calloc(expandCapacity, sizeof(IndexNode));
+        memset(expandedNodePool, 0, expandCapacity);
+        memcpy(expandedNodePool, this->_nodePool, this->_currentNodePoolCapacity);
+        CYBER_BIRD_ASSERT(expandedNodePool, "cannot expand index node pool");
+        CYBER_BIRD_SAFE_FREE(this->_nodePool);
+        this->_currentNodePoolCapacity = expandCapacity;
+        this->_nodePool = expandedNodePool;
     }
     IndexNode *node = this->_nodePool + this->_currentNodeCount;
     node->zoomLevel = zoomLevel;

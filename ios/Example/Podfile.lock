@@ -1,0 +1,19 @@
+PODS:
+  - CyberBird (0.0.1)
+  - GoogleMaps (1.9.2)
+
+DEPENDENCIES:
+  - CyberBird (from `../../`)
+  - GoogleMaps
+
+EXTERNAL SOURCES:
+  CyberBird:
+    :path: "../../"
+
+SPEC CHECKSUMS:
+  CyberBird: 3e863378177daf9f43cd69a1fee823cb28785d49
+  GoogleMaps: 56aac0f356383bab283c731acb1e687c51de6472
+
+PODFILE CHECKSUM: b7fc1d88ae65df3224781292ed6143b04242eef7
+
+COCOAPODS: 1.2.0

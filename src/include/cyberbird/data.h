@@ -30,6 +30,7 @@ public:
     explicit value(const std::string &s);
     explicit value(const char *s);
     template<typename T> T &get();
+    template<typename T> bool is();
 private:
     union _storage {
         bool boolean_;
@@ -55,6 +56,22 @@ template<> inline std::string &value::get<std::string>() {
 
 template<> inline long long int &value::get<long long int>() {
     return this->_storage.number_;
+}
+
+template<> inline bool value::is<object>() {
+    return this->_type == type_object;
+}
+
+template<> inline bool value::is<array>() {
+    return this->_type == type_array;
+}
+
+template<> inline bool value::is<std::string>() {
+    return this->_type == type_string;
+}
+
+template<> inline bool value::is<long long int>() {
+    return this->_type == type_number;
 }
 
 }

@@ -119,7 +119,7 @@ uint64_t Table::insert(double latitude, double longitude, const object &o)
     this->_rows[dataId] = copyObject(o);
     this->_indexPage->tree()->insert(Indexer::index(latitude, longitude), dataId);
     this->_lastId = dataId;
-    this->_storage->flush();
+    //this->_storage->flush();
     return dataId;
 }
 

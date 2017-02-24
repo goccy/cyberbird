@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <CyberBird/CBStorage.h>
 
 @class CBStorage;
 
