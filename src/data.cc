@@ -1,4 +1,5 @@
 #include <cyberbird/data.h>
+#include <cyberbird/util.h>
 
 using namespace cyberbird;
 
@@ -12,13 +13,13 @@ value::~value(void)
     case type_number:
         break;
     case type_string:
-        delete this->_storage.string_;
+        CYBER_BIRD_SAFE_DELETE(this->_storage.string_);
         break;
     case type_array:
-        delete this->_storage.array_;
+        CYBER_BIRD_SAFE_DELETE(this->_storage.array_);
         break;
     case type_object:
-        delete this->_storage.object_;
+        CYBER_BIRD_SAFE_DELETE(this->_storage.object_);
         break;
     default:
         break;

@@ -9,8 +9,8 @@ static const int DEFAULT_LOCATION_COUNT = 8;
 
 IndexTree::IndexTree(void)
 {
-    static const int DEFAULT_NODE_POOL_CAPACITY = 8192;
-    static const int DEFAULT_LEAF_POOL_CAPACITY = 8192;
+    static const int DEFAULT_NODE_POOL_CAPACITY = 1024;
+    static const int DEFAULT_LEAF_POOL_CAPACITY = 1024;
 
     this->_currentNodePoolCapacity = DEFAULT_NODE_POOL_CAPACITY;
     this->_currentLeafPoolCapacity = DEFAULT_LEAF_POOL_CAPACITY;
@@ -22,6 +22,7 @@ IndexTree::IndexTree(void)
 }
 
 #define SET_PTR_FROM_INDEX(pool, node, position) (node->position.node = node->position.index > 0 ? pool + node->position.index : NULL)
+#define NODE_PTR_TO_INDEX(node, position) (node->position.node ? (node->position.node - this->_nodePool) : 0)
 
 IndexTree::IndexTree(EncodeBuffer *nodePoolBuffer, EncodeBuffer *leafPoolBuffer)
 {
@@ -75,13 +76,29 @@ IndexNode *IndexTree::newNode(unsigned int zoomLevel)
     if (this->_currentNodeCount + 1 == this->_currentNodePoolCapacity) {
         // expand nodePool size
         size_t expandCapacity = this->_currentNodePoolCapacity * 2;
-        IndexNodePool *expandedNodePool = (IndexNodePool *)calloc(expandCapacity, sizeof(IndexNode));
-        memset(expandedNodePool, 0, expandCapacity);
-        memcpy(expandedNodePool, this->_nodePool, this->_currentNodePoolCapacity);
+
+        for (size_t i = 0; i < this->_currentNodeCount; ++i) {
+            IndexNode *node    = this->_nodePool + i;
+            node->topLeft.index     = NODE_PTR_TO_INDEX(node, topLeft);
+            node->topRight.index    = NODE_PTR_TO_INDEX(node, topRight);
+            node->bottomLeft.index  = NODE_PTR_TO_INDEX(node, bottomLeft);
+            node->bottomRight.index = NODE_PTR_TO_INDEX(node, bottomRight);
+        }
+
+        IndexNodePool *expandedNodePool = (IndexNodePool *)realloc(this->_nodePool, sizeof(IndexNode) * expandCapacity);
         CYBER_BIRD_ASSERT(expandedNodePool, "cannot expand index node pool");
-        CYBER_BIRD_SAFE_FREE(this->_nodePool);
-        this->_currentNodePoolCapacity = expandCapacity;
+        memset(expandedNodePool + this->_currentNodePoolCapacity, 0, sizeof(IndexNode) * (expandCapacity - this->_currentNodePoolCapacity));
         this->_nodePool = expandedNodePool;
+
+        for (size_t i = 0; i < this->_currentNodeCount; ++i) {
+            IndexNode *node    = this->_nodePool + i;
+            SET_PTR_FROM_INDEX(this->_nodePool, node, topLeft);
+            SET_PTR_FROM_INDEX(this->_nodePool, node, topRight);
+            SET_PTR_FROM_INDEX(this->_nodePool, node, bottomLeft);
+            SET_PTR_FROM_INDEX(this->_nodePool, node, bottomRight);
+        }
+        this->_rootNode = this->_nodePool;
+        this->_currentNodePoolCapacity = expandCapacity;
     }
     IndexNode *node = this->_nodePool + this->_currentNodeCount;
     node->zoomLevel = zoomLevel;
@@ -93,8 +110,13 @@ IndexLeaf *IndexTree::newLeaf(uint64_t key, uint64_t id, IndexNode *node)
 {
     if (this->_currentLeafCount + 1 == this->_currentLeafPoolCapacity) {
         // expand leafPool size
+        size_t expandCapacity = this->_currentLeafPoolCapacity * 2;
         this->_currentLeafPoolCapacity *= 2;
-        this->_leafPool = (IndexLeafPool *)realloc(this->_leafPool, this->_currentLeafPoolCapacity);
+        IndexLeafPool *expandedLeafPool = (IndexLeafPool *)realloc(this->_leafPool, sizeof(IndexLeaf) * expandCapacity);
+        CYBER_BIRD_ASSERT(expandedLeafPool, "cannot expand leaf pool");
+        memset(expandedLeafPool + this->_currentLeafPoolCapacity, 0, sizeof(IndexLeaf) * (expandCapacity - this->_currentLeafPoolCapacity));
+        this->_leafPool = expandedLeafPool;
+        this->_currentLeafPoolCapacity = expandCapacity;
     }
     IndexLeaf *leaf = (IndexLeaf *)this->_leafPool + this->_currentLeafCount;
     leaf->key       = key;
@@ -104,7 +126,6 @@ IndexLeaf *IndexTree::newLeaf(uint64_t key, uint64_t id, IndexNode *node)
     return leaf;
 }
 
-#define NODE_PTR_TO_INDEX(node, position) (node->position.node ? (node->position.node - this->_nodePool) : 0)
 
 EncodeBuffer IndexTree::encodeNodePool(void)
 {
