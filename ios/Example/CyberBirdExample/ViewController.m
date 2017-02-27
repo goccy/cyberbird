@@ -32,13 +32,17 @@
     CBTableBuilder *builder   = [[CBTableBuilder alloc] initWithTableName:@"stations"];
     CBTable *stationTable     = [[[builder addStringColumn:@"name" size:64] addStringColumn:@"furigana" size:256] build];
     if ([storage createTable:stationTable]) {
+        NSMutableDictionary *uniqueStationMap = [@{} mutableCopy];
         for (NSDictionary *stationData in stations) {
-            [stationTable insertWithLatitude:[stationData[@"lat"] floatValue] longitude:[stationData[@"lon"] floatValue]
+            uniqueStationMap[stationData[@"name"]] = stationData;
+        }
+        for (NSDictionary *stationData in [uniqueStationMap allValues]) {
+            [stationTable insertWithLatitude:[stationData[@"lat"] floatValue] longitude:[stationData[@"lng"] floatValue]
                                        value:@{ @"name": stationData[@"name"], @"furigana": stationData[@"furigana"] ?: @"" }];
         }
     }
     [storage flush];
-    NSArray *foundStations = [self.cyberBird fly:@"stations" latitude:35.65796 longitude:139.708928 zoomLevel:13];
+    NSArray *foundStations = [self.cyberBird fly:@"stations" latitude:35.65796 longitude:139.708928 zoomLevel:15];
      
     GMSCameraPosition *camera = [GMSCameraPosition cameraWithLatitude:35.65796
                                                             longitude:139.708928
