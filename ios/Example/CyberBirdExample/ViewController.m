@@ -23,7 +23,8 @@ static const NSUInteger MARKER_THRESHOLD = 1000;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    NSString *dbPath = [NSString stringWithFormat:@"%@/cyberbird.db", [[NSBundle mainBundle] resourcePath]];
+    NSString *dbPath = [NSString stringWithFormat:@"%@/tmp/cyberbird.db", NSHomeDirectory()];
+    [[NSFileManager defaultManager] removeItemAtPath:dbPath error:nil];
     self.cyberBird   = [CyberBirdBridge new];
     [self.cyberBird wake:[NSURL fileURLWithPath:dbPath]];
     self.cachedMarkers = [@{} mutableCopy];

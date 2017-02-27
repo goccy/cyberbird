@@ -270,6 +270,7 @@ void IndexTree::insert(uint64_t key, uint64_t id)
 void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
 {
     uint64_t count = CYBER_BIRD_MAX_ZOOM_LEVEL << 1;
+    IndexNode *rootNode    = this->_rootNode;
     IndexNode *currentNode = this->_rootNode;
     currentNode->totalChildren++;
     for (size_t i = CYBER_BIRD_MAX_ZOOM_LEVEL; i > 0; i--) {
@@ -279,28 +280,48 @@ void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
         switch (type) {
         case IndexTypeTopLeft:
             if (!currentNode->topLeft.node) {
-                currentNode->topLeft.node = newNode(currentZoomLevel);
+                // if realloc newPool, this->_rootNode will be changed.
+                // calculate nodeIndex using rootNode pointer before reallocated.
+                // replace currentNode pointer for changed pointer
+                IndexNode *node  = newNode(currentZoomLevel);
+                size_t nodeIndex = currentNode - rootNode;
+                currentNode = this->_rootNode + nodeIndex;
+                currentNode->topLeft.node = node;
+                // replace rootNode to reallocated pointer
+                rootNode = this->_rootNode;
             }
             currentNode->topLeft.node->totalChildren++;
             currentNode = currentNode->topLeft.node;
             break;
         case IndexTypeTopRight:
             if (!currentNode->topRight.node) {
-                currentNode->topRight.node = newNode(currentZoomLevel);
+                IndexNode *node = newNode(currentZoomLevel);
+                size_t nodeIndex = currentNode - rootNode;
+                currentNode = this->_rootNode + nodeIndex;
+                currentNode->topRight.node = node;
+                rootNode = this->_rootNode;
             }
             currentNode->topRight.node->totalChildren++;
             currentNode = currentNode->topRight.node;
             break;
         case IndexTypeBottomLeft:
             if (!currentNode->bottomLeft.node) {
-                currentNode->bottomLeft.node = newNode(currentZoomLevel);
+                IndexNode *node = newNode(currentZoomLevel);
+                size_t nodeIndex = currentNode - rootNode;
+                currentNode = this->_rootNode + nodeIndex;
+                currentNode->bottomLeft.node = node;
+                rootNode = this->_rootNode;
             }
             currentNode->bottomLeft.node->totalChildren++;
             currentNode = currentNode->bottomLeft.node;
             break;
         case IndexTypeBottomRight:
             if (!currentNode->bottomRight.node) {
-                currentNode->bottomRight.node = newNode(currentZoomLevel);
+                IndexNode *node = newNode(currentZoomLevel);
+                size_t nodeIndex = currentNode - rootNode;
+                currentNode = this->_rootNode + nodeIndex;
+                currentNode->bottomRight.node = node;
+                rootNode = this->_rootNode;
             }
             currentNode->bottomRight.node->totalChildren++;
             currentNode = currentNode->bottomRight.node;
