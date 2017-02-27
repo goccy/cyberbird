@@ -24,7 +24,7 @@ public:
     value(void);
     ~value(void);
     value(const value &v);
-    explicit value(long long int number);
+    explicit value(double number);
     explicit value(const object &o);
     explicit value(const array &a);
     explicit value(const std::string &s);
@@ -34,7 +34,7 @@ public:
 private:
     union _storage {
         bool boolean_;
-        long long int number_;
+        double number_;
         std::string *string_;
         array *array_;
         object *object_;
@@ -54,7 +54,7 @@ template<> inline std::string &value::get<std::string>() {
     return *this->_storage.string_;
 }
 
-template<> inline long long int &value::get<long long int>() {
+template<> inline double &value::get<double>() {
     return this->_storage.number_;
 }
 
@@ -70,7 +70,7 @@ template<> inline bool value::is<std::string>() {
     return this->_type == type_string;
 }
 
-template<> inline bool value::is<long long int>() {
+template<> inline bool value::is<double>() {
     return this->_type == type_number;
 }
 

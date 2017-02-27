@@ -84,7 +84,8 @@ IndexNode *IndexTree::newNode(unsigned int zoomLevel)
             node->bottomLeft.index  = NODE_PTR_TO_INDEX(node, bottomLeft);
             node->bottomRight.index = NODE_PTR_TO_INDEX(node, bottomRight);
         }
-
+        
+        IndexNodePool *previousAddress = this->_nodePool;
         IndexNodePool *expandedNodePool = (IndexNodePool *)realloc(this->_nodePool, sizeof(IndexNode) * expandCapacity);
         CYBER_BIRD_ASSERT(expandedNodePool, "cannot expand index node pool");
         memset(expandedNodePool + this->_currentNodePoolCapacity, 0, sizeof(IndexNode) * (expandCapacity - this->_currentNodePoolCapacity));
@@ -96,6 +97,16 @@ IndexNode *IndexTree::newNode(unsigned int zoomLevel)
             SET_PTR_FROM_INDEX(this->_nodePool, node, topRight);
             SET_PTR_FROM_INDEX(this->_nodePool, node, bottomLeft);
             SET_PTR_FROM_INDEX(this->_nodePool, node, bottomRight);
+        }
+        std::map<uint64_t, size_t> nodeLocationMap;
+        for (size_t i = 0; i < this->_currentLeafCount; ++i) {
+            IndexLeaf *leaf = this->_leafPool + i;
+            size_t nodeIndex = leaf->node.ptr - previousAddress;
+            IndexNode *node = this->_nodePool + nodeIndex;
+            leaf->node.ptr  = node;
+            size_t locationCount = nodeLocationMap[nodeIndex];
+            node->locations[locationCount] = leaf;
+            nodeLocationMap[nodeIndex] = locationCount + 1;
         }
         this->_rootNode = this->_nodePool;
         this->_currentNodePoolCapacity = expandCapacity;
@@ -111,7 +122,6 @@ IndexLeaf *IndexTree::newLeaf(uint64_t key, uint64_t id, IndexNode *node)
     if (this->_currentLeafCount + 1 == this->_currentLeafPoolCapacity) {
         // expand leafPool size
         size_t expandCapacity = this->_currentLeafPoolCapacity * 2;
-        this->_currentLeafPoolCapacity *= 2;
         IndexLeafPool *expandedLeafPool = (IndexLeafPool *)realloc(this->_leafPool, sizeof(IndexLeaf) * expandCapacity);
         CYBER_BIRD_ASSERT(expandedLeafPool, "cannot expand leaf pool");
         memset(expandedLeafPool + this->_currentLeafPoolCapacity, 0, sizeof(IndexLeaf) * (expandCapacity - this->_currentLeafPoolCapacity));

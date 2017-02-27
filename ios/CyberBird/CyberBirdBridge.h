@@ -17,6 +17,6 @@
 - (void)sleep;
 - (CBStorage *)storage;
 
-- (NSArray *)fly:(NSString *)tableName latitude:(double)latitude longitude:(double)longitude zoomLevel:(NSUInteger)zoomLevel;
+- (void)fly:(NSString *)tableName latitude:(double)latitude longitude:(double)longitude zoomLevel:(NSUInteger)zoomLevel didCompletion:(void(^)(NSArray *foundLocations))didCompletion;
 
 @end

@@ -46,7 +46,7 @@ value::value(const value &v) : _type(v._type)
     }
 }
 
-value::value(long long int number) : _type(type_number)
+value::value(double number) : _type(type_number)
 {
     this->_storage.number_ = number;
 }

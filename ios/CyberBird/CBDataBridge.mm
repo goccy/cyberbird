@@ -29,8 +29,8 @@
         cyberbird::value value = it->second;
         if (value.is<std::string>()) {
             ret[@(key.c_str())] = @(value.get<std::string>().c_str());
-        } else if (value.is<long long int>()) {
-            ret[@(key.c_str())] = @(value.get<long long int>());
+        } else if (value.is<double>()) {
+            ret[@(key.c_str())] = @(value.get<double>());
         }
     }
     return ret;

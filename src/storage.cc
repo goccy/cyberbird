@@ -44,7 +44,7 @@ Table::Builder::~Builder()
 
 Table::Builder *Table::Builder::addNumberColumn(const char *name)
 {
-    Table::Column column(name, Table::Column::Number, sizeof(long long int));
+    Table::Column column(name, Table::Column::Number, sizeof(double));
     this->_columns.push_back(column);
     return this;
 }
@@ -102,7 +102,15 @@ array Table::select(double latitude, double longitude, unsigned int zoomLevel)
     array ret;
     std::vector<IndexLeaf *> indexes = this->_indexPage->tree()->select(Indexer::index(latitude, longitude), zoomLevel);
     for (size_t i = 0; i < indexes.size(); ++i) {
-        ret.push_back(value(*this->_rows[indexes[i]->id]));
+        object *o = this->_rows[indexes[i]->id];
+        if (!o) continue;
+        double targetLatitude[1]  = {0};
+        double targetLongitude[1] = {0};
+        Indexer::toLocation(indexes[i]->key, targetLatitude, targetLongitude);
+        o->insert(std::make_pair("id", value(indexes[i]->key)));
+        o->insert(std::make_pair("latitude", value(targetLatitude[0])));
+        o->insert(std::make_pair("longitude", value(targetLongitude[0])));
+        ret.push_back(value(*o));
     }
     return ret;
 }
@@ -236,7 +244,7 @@ bool Table::flush(Writer *writer)
             size_t size = ((Table::Column)column).size();
             switch (((Table::Column)column).type()) {
             case Column::Number: {
-                long long int number = v.get<long long int>();
+                double number = v.get<double>();
                 memcpy(writePtr, &number, size);
                 writePtr += size;
                 break;

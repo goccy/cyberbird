@@ -11,10 +11,13 @@
 #import "CBDataBridge.h"
 #import <cyberbird/cyberbird.h>
 #import "CBStoragePrivate.h"
+#import "CBFlightEngine.h"
+#import "CBFlightPlan.h"
 
 @interface CyberBirdBridge()
 
 @property(nonatomic) cyberbird::CyberBird *nativeInstance;
+@property(nonatomic) CBFlightEngine *flightEngine;
 
 @end
 
@@ -24,6 +27,7 @@
 {
     self = [super init];
     self.nativeInstance = new cyberbird::CyberBird();
+    self.flightEngine   = [CBFlightEngine new];
     return self;
 }
 
@@ -37,10 +41,16 @@
     self.nativeInstance->sleep();
 }
 
-- (NSArray *)fly:(NSString *)tableName latitude:(double)latitude longitude:(double)longitude zoomLevel:(NSUInteger)zoomLevel
+- (void)fly:(NSString *)tableName latitude:(double)latitude longitude:(double)longitude zoomLevel:(NSUInteger)zoomLevel didCompletion:(void(^)(NSArray *foundLocations))didCompletion
 {
-    cyberbird::array array = self.nativeInstance->fly([tableName UTF8String], latitude, longitude, zoomLevel);
-    return [CBDataBridge toNSArray:array];
+    CBFlightPlan *plan = [[CBFlightPlan alloc] initWithPlan:^{
+        cyberbird::array array = self.nativeInstance->fly([tableName UTF8String], latitude, longitude, zoomLevel);
+        NSArray *locations = [CBDataBridge toNSArray:array];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            didCompletion(locations);
+        });
+    }];
+    [self.flightEngine add:plan];
 }
 
 - (CBStorage *)storage
