@@ -12,7 +12,7 @@ public:
     bool read(char *buf, uint64_t size);
     bool readNumber(size_t *number);
     bool readNumber(uint64_t *number);
-    bool readNumber(long long int *number);
+    bool readNumber(double *number);
     bool isEOF(void);
 private:
     gzFile _filePtr;

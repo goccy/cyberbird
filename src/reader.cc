@@ -52,10 +52,10 @@ bool Reader::readNumber(uint64_t *number)
     return true;
 }
 
-bool Reader::readNumber(long long int *number)
+bool Reader::readNumber(double *number)
 {
     int readError = 0;
-    size_t size = sizeof(long long int);
+    size_t size = sizeof(double);
     if (gzread(this->_filePtr, number, size) < size) {
         CYBER_BIRD_LOG_ERROR("cannot read %s. %s", this->_filename, gzerror(this->_filePtr, &readError));
         return false;

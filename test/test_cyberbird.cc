@@ -32,7 +32,7 @@ TEST_F(CyberBirdTest, main) {
     EXPECT_EQ(people.size(), 1);
     cyberbird::object person = people[0].get<cyberbird::object>();
     EXPECT_EQ(person["name"].get<std::string>(), "bob");
-    EXPECT_EQ(person["age"].get<long long int>(), 20);
+    EXPECT_EQ(person["age"].get<double>(), 20);
     cyberBird.sleep();
     unlink(path);
 }

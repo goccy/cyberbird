@@ -196,7 +196,7 @@ bool Table::load(Reader *reader)
             size_t size      = ((Table::Column)column).size();
             switch (((Table::Column)column).type()) {
             case Column::Number: {
-                long long int number = 0;
+                double number = 0;
                 if (!reader->readNumber(&number)) return false;
                 o->insert(std::make_pair(std::string(name), value(number)));
                 break;
