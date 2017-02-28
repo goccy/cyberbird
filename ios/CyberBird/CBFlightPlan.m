@@ -10,7 +10,7 @@
 
 @interface CBFlightPlan()
 
-@property(nonatomic) void(^plan)(void);
+@property(nonatomic, strong) void(^plan)(void);
 
 @end
 
