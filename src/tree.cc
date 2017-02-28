@@ -84,7 +84,7 @@ IndexNode *IndexTree::newNode(unsigned int zoomLevel)
             node->bottomLeft.index  = NODE_PTR_TO_INDEX(node, bottomLeft);
             node->bottomRight.index = NODE_PTR_TO_INDEX(node, bottomRight);
         }
-        
+
         IndexNodePool *previousAddress = this->_nodePool;
         IndexNodePool *expandedNodePool = (IndexNodePool *)realloc(this->_nodePool, sizeof(IndexNode) * expandCapacity);
         CYBER_BIRD_ASSERT(expandedNodePool, "cannot expand index node pool");
@@ -270,25 +270,22 @@ void IndexTree::insert(uint64_t key, uint64_t id)
 void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
 {
     uint64_t count = CYBER_BIRD_MAX_ZOOM_LEVEL << 1;
-    IndexNode *rootNode    = this->_rootNode;
     IndexNode *currentNode = this->_rootNode;
     currentNode->totalChildren++;
     for (size_t i = CYBER_BIRD_MAX_ZOOM_LEVEL; i > 0; i--) {
         count -= 2;
         size_t currentZoomLevel = CYBER_BIRD_MAX_ZOOM_LEVEL - i + 1;
         IndexType type = (IndexType)((key & (uint64_t)((uint64_t)3 << count)) >> count);
+        // calculate nodeIndex using rootNode pointer before reallocated.
+        size_t nodeIndex = currentNode - this->_rootNode;
         switch (type) {
         case IndexTypeTopLeft:
             if (!currentNode->topLeft.node) {
                 // if realloc newPool, this->_rootNode will be changed.
-                // calculate nodeIndex using rootNode pointer before reallocated.
                 // replace currentNode pointer for changed pointer
-                IndexNode *node  = newNode(currentZoomLevel);
-                size_t nodeIndex = currentNode - rootNode;
-                currentNode = this->_rootNode + nodeIndex;
+                IndexNode *node = newNode(currentZoomLevel);
+                currentNode     = this->_rootNode + nodeIndex;
                 currentNode->topLeft.node = node;
-                // replace rootNode to reallocated pointer
-                rootNode = this->_rootNode;
             }
             currentNode->topLeft.node->totalChildren++;
             currentNode = currentNode->topLeft.node;
@@ -296,10 +293,8 @@ void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
         case IndexTypeTopRight:
             if (!currentNode->topRight.node) {
                 IndexNode *node = newNode(currentZoomLevel);
-                size_t nodeIndex = currentNode - rootNode;
-                currentNode = this->_rootNode + nodeIndex;
+                currentNode     = this->_rootNode + nodeIndex;
                 currentNode->topRight.node = node;
-                rootNode = this->_rootNode;
             }
             currentNode->topRight.node->totalChildren++;
             currentNode = currentNode->topRight.node;
@@ -307,10 +302,8 @@ void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
         case IndexTypeBottomLeft:
             if (!currentNode->bottomLeft.node) {
                 IndexNode *node = newNode(currentZoomLevel);
-                size_t nodeIndex = currentNode - rootNode;
-                currentNode = this->_rootNode + nodeIndex;
+                currentNode     = this->_rootNode + nodeIndex;
                 currentNode->bottomLeft.node = node;
-                rootNode = this->_rootNode;
             }
             currentNode->bottomLeft.node->totalChildren++;
             currentNode = currentNode->bottomLeft.node;
@@ -318,10 +311,8 @@ void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
         case IndexTypeBottomRight:
             if (!currentNode->bottomRight.node) {
                 IndexNode *node = newNode(currentZoomLevel);
-                size_t nodeIndex = currentNode - rootNode;
-                currentNode = this->_rootNode + nodeIndex;
+                currentNode     = this->_rootNode + nodeIndex;
                 currentNode->bottomRight.node = node;
-                rootNode = this->_rootNode;
             }
             currentNode->bottomRight.node->totalChildren++;
             currentNode = currentNode->bottomRight.node;
@@ -330,7 +321,7 @@ void IndexTree::insert(uint64_t key, uint64_t id, unsigned int cacheZoomLevel)
             break;
         }
         if ((0 < cacheZoomLevel && cacheZoomLevel < CYBER_BIRD_MAX_ZOOM_LEVEL) ||
-            i == 1) {
+            currentZoomLevel == CYBER_BIRD_MAX_ZOOM_LEVEL) {
             // cache specific data for small zoom level
             if (!currentNode->locations) {
                 allocNodeLocations(currentNode);
