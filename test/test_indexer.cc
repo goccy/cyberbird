@@ -1,24 +1,20 @@
 #include <cyberbird/indexer.h>
+#include "fixture/fixture.h"
 #include <gtest/gtest.h>
 
 using namespace cyberbird;
 
-class IndexerTest : public ::testing::Test{};
+class IndexerTest : public ::testing::Test, public Fixture {};
 
 TEST_F(IndexerTest, index) {
-    double latitude  = 35.65796;
-    double longitude = 139.708928;
-    uint64_t index = Indexer::index(latitude, longitude);
-    EXPECT_EQ(index, 8945753372360179111);
+    uint64_t index = Indexer::index(SIBUYA_1ST_TOWER_LAT, SIBUYA_1ST_TOWER_LON);
+    EXPECT_EQ(index, SIBUYA_1ST_TOWER_INDEX);
 }
 
 TEST_F(IndexerTest, toLocation) {
-    double latitude  = 35.65796;
-    double longitude = 139.708928;
-    uint64_t index   = 8945753372360179111;
     double lat[1];
     double lon[1];
-    Indexer::toLocation(index, lat, lon);
-    EXPECT_EQ((int)latitude, (int)lat[0]);
-    EXPECT_EQ((int)longitude, (int)lon[0]);
+    Indexer::toLocation(SIBUYA_1ST_TOWER_INDEX, lat, lon);
+    EXPECT_EQ(toString(SIBUYA_1ST_TOWER_LAT), toString(lat[0]));
+    EXPECT_EQ(toString(SIBUYA_1ST_TOWER_LON), toString(lon[0]));
 }

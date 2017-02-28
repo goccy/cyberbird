@@ -1,19 +1,27 @@
 #include <cyberbird/cyberbird.h>
 #include <gtest/gtest.h>
-#include <fcntl.h>
+#include "fixture/fixture.h"
 
-class CyberBirdTest : public ::testing::Test{};
+class CyberBirdTest : public ::testing::Test, public Fixture {
+public:
+    char *DB_PATH;
 
-TEST_F(CyberBirdTest, main) {
-    char path[PATH_MAX] = {0};
-    std::string pathTemplate = "/tmp/cyberbird.dbXXXXXX";
-    int fd = mkstemp((char *)pathTemplate.c_str());
-    if (fcntl(fd, F_GETPATH, path) == -1) {
-        EXPECT_TRUE(false);
+    virtual void SetUp() {
+        this->DB_PATH = dbpath();
+        if (!this->DB_PATH) {
+            EXPECT_TRUE(false);
+        }
     }
 
+    virtual void TearDown() {
+        unlink(this->DB_PATH);
+    }
+};
+
+TEST_F(CyberBirdTest, main) {
+
     cyberbird::CyberBird cyberBird;
-    cyberBird.wake(path);
+    cyberBird.wake(DB_PATH);
 
     cyberbird::Storage *storage = cyberBird.storage();
 
@@ -25,14 +33,13 @@ TEST_F(CyberBirdTest, main) {
         cyberbird::object o;
         o.insert(std::make_pair("name", cyberbird::value("bob")));
         o.insert(std::make_pair("age", cyberbird::value(20)));
-        storage->table("person")->insert(35.65796, 139.708928, o);
+        storage->table("person")->insert(SIBUYA_STATION_LAT, SIBUYA_STATION_LON, o);
     }
 
-    cyberbird::array people = storage->table("person")->select(35.65796, 139.708928, 1);
+    cyberbird::array people = storage->table("person")->select(SIBUYA_STATION_LAT, SIBUYA_STATION_LON, 1);
     EXPECT_EQ(people.size(), 1);
     cyberbird::object person = people[0].get<cyberbird::object>();
     EXPECT_EQ(person["name"].get<std::string>(), "bob");
     EXPECT_EQ(person["age"].get<double>(), 20);
     cyberBird.sleep();
-    unlink(path);
 }
