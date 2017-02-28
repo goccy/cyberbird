@@ -48,6 +48,34 @@ TEST_F(StorageTest, insert) {
     EXPECT_GT(personTable->insert(SIBUYA_STATION_LAT, SIBUYA_STATION_LON, o), 0);
 }
 
+TEST_F(StorageTest, update) {
+    Table::Builder personBuilder("person");
+    Table *personTable = personBuilder.addStringColumn("name", 16)->addNumberColumn("age")->build();
+
+    Storage storage(DB_PATH);
+    EXPECT_TRUE(storage.createTable(personTable));
+
+    {
+        cyberbird::object o;
+        o.insert(std::make_pair("name", cyberbird::value("bob")));
+        o.insert(std::make_pair("age", cyberbird::value(20)));
+        personTable->insert(SIBUYA_STATION_LAT, SIBUYA_STATION_LON, o);
+    }
+
+    {
+        cyberbird::object o;
+        o.insert(std::make_pair("name", cyberbird::value("ken")));
+        o.insert(std::make_pair("age", cyberbird::value(30)));
+        personTable->update(SIBUYA_STATION_LAT, SIBUYA_STATION_LON, o);
+    }
+
+    cyberbird::array people = personTable->select(SIBUYA_STATION_LAT, SIBUYA_STATION_LON, 1);
+    EXPECT_EQ(people.size(), 1);
+    cyberbird::object person = people[0].get<cyberbird::object>();
+    EXPECT_EQ(person["name"].get<std::string>(), "ken");
+    EXPECT_EQ(person["age"].get<double>(), 30);
+}
+
 TEST_F(StorageTest, flush_load) {
     Table::Builder personBuilder("person");
     Table *personTable = personBuilder.addStringColumn("name", 16)->addNumberColumn("age")->build();

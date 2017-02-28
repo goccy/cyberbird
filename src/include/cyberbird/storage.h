@@ -5,6 +5,7 @@
 #include <cyberbird/index_page.h>
 #include <cyberbird/reader.h>
 #include <cyberbird/writer.h>
+#include <pthread.h>
 
 namespace cyberbird {
 
@@ -68,7 +69,7 @@ public:
     array select(double latitude, double longitude, unsigned int zoomLevel);
     uint64_t insert(double latitude, double longitude, const object &value);
     uint64_t insert(double latitude, double longitude, unsigned int zoomLevel, const object &value);
-    void update(double latitude, double longitude, unsigned int zoomLevel, const object &value);
+    void update(double latitude, double longitude, const object &value);
     void remove(double latitude, double longitude);
 
 private:
@@ -78,6 +79,7 @@ private:
     Storage *_storage;
     IndexPage *_indexPage;
     std::map<uint64_t, object*> _rows;
+    pthread_mutex_t _lock;
 
     Table(const char *tableName, std::vector<Column> columns);
     size_t rowSize(void);

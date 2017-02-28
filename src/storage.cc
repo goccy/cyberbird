@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <zlib.h>
 
-
 using namespace cyberbird;
 
 Table::Column::Column(const char *name, Table::Column::Type type, size_t size) : _type(type), _size(size)
@@ -69,6 +68,7 @@ Table::Table(const char *tableName, std::vector<Column> columns) :
     this->_name = (char *)malloc(len);
     strncpy(this->_name, tableName, len);
     this->_indexPage = new IndexPage();
+    pthread_mutex_init(&this->_lock, 0);
 }
 
 Table::~Table(void)
@@ -89,21 +89,12 @@ const std::vector<Table::Column> &Table::columns(void)
 
 array Table::select(double latitude, double longitude, unsigned int zoomLevel, unsigned int maxZoomLevel)
 {
+    pthread_mutex_lock(&this->_lock);
     array ret;
     std::vector<IndexLeaf *> indexes = this->_indexPage->tree()->select(Indexer::index(latitude, longitude), zoomLevel, maxZoomLevel);
     for (size_t i = 0; i < indexes.size(); ++i) {
-        ret.push_back(value(*this->_rows[indexes[i]->id]));
-    }
-    return ret;
-}
-
-array Table::select(double latitude, double longitude, unsigned int zoomLevel)
-{
-    array ret;
-    std::vector<IndexLeaf *> indexes = this->_indexPage->tree()->select(Indexer::index(latitude, longitude), zoomLevel);
-    for (size_t i = 0; i < indexes.size(); ++i) {
         object *o = this->_rows[indexes[i]->id];
-        if (!o) continue;
+        CYBER_BIRD_ASSERT(o, "object is NULL");
         double targetLatitude[1]  = {0};
         double targetLongitude[1] = {0};
         Indexer::toLocation(indexes[i]->key, targetLatitude, targetLongitude);
@@ -112,23 +103,59 @@ array Table::select(double latitude, double longitude, unsigned int zoomLevel)
         o->insert(std::make_pair("longitude", value(targetLongitude[0])));
         ret.push_back(value(*o));
     }
+    pthread_mutex_unlock(&this->_lock);
     return ret;
 }
 
+array Table::select(double latitude, double longitude, unsigned int zoomLevel)
+{
+    return select(latitude, longitude, zoomLevel, CYBER_BIRD_MAX_ZOOM_LEVEL);
+}
+
 uint64_t Table::insert(double latitude, double longitude, const object &o)
+{
+    return insert(latitude, longitude, 0, o);
+}
+
+uint64_t Table::insert(double latitude, double longitude, unsigned int zoomLevel, const object &o)
 {
     if (!isValidData(o)) return 0;
     if (!this->_storage) {
         CYBER_BIRD_LOG_ERROR("must be created this table before insert. show Storage::createTable");
         return 0;
     }
-
+    pthread_mutex_lock(&this->_lock);
     uint64_t dataId     = this->_lastId + 1;
     this->_rows[dataId] = copyObject(o);
-    this->_indexPage->tree()->insert(Indexer::index(latitude, longitude), dataId);
+    this->_indexPage->tree()->insert(Indexer::index(latitude, longitude), dataId, zoomLevel);
     this->_lastId = dataId;
-    //this->_storage->flush();
+    pthread_mutex_unlock(&this->_lock);
     return dataId;
+}
+
+void Table::update(double latitude, double longitude, const object &o)
+{
+    if (!isValidData(o)) return;
+
+    pthread_mutex_lock(&this->_lock);
+    array ret;
+    std::vector<IndexLeaf *> indexes = this->_indexPage->tree()->select(Indexer::index(latitude, longitude), 0);
+    if (indexes.size() > 1) {
+        CYBER_BIRD_LOG_WARN("found duplicate entry by [latitude, longitude] = [%f, %f]", latitude, longitude);
+        return;
+    }
+    IndexLeaf *leaf = indexes[0];
+    object *origin  = this->_rows[leaf->id];
+    CYBER_BIRD_ASSERT(origin, "object is NULL");
+    this->_rows[leaf->id] = copyObject(o);
+    CYBER_BIRD_SAFE_DELETE(origin);
+    pthread_mutex_unlock(&this->_lock);
+}
+
+void Table::remove(double latitude, double longitude)
+{
+    pthread_mutex_lock(&this->_lock);
+    pthread_mutex_unlock(&this->_lock);
 }
 
 object *Table::copyObject(const object &from)
@@ -163,19 +190,6 @@ size_t Table::rowSize(void)
         ret += this->_columns[i].size();
     }
     return ret;
-}
-
-uint64_t Table::insert(double latitude, double longitude, unsigned int zoomLevel, const object &object)
-{
-    return 0;
-}
-
-void Table::update(double latitude, double longitude, unsigned int zoomLevel, const object &object)
-{
-}
-
-void Table::remove(double latitude, double longitude)
-{
 }
 
 bool Table::load(Reader *reader)
